@@ -23,30 +23,42 @@ The result is published as a newspaper-style web edition with a front page, an u
 
 ### 2. Set up the pipeline (Python 3.12+)
 
-```powershell
+```bash
 git clone https://github.com/meriem-sid/ds-ai-newspaper.git
 cd ds-ai-newspaper
 python -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
-copy .env.example .env
 ```
 
-Fill in the keys in `.env`. Then run the tests and build a first edition (the database tables are created automatically):
+Activate the virtual environment, install the dependencies and create your `.env`:
 
-```powershell
-.venv\Scripts\python -m pytest -q tests
-.venv\Scripts\python -m pipeline.main --dry-run
-.venv\Scripts\python -m pipeline.main
+| macOS / Linux | Windows (PowerShell) |
+|---|---|
+| `source .venv/bin/activate` | `.venv\Scripts\Activate.ps1` |
+| `pip install -r requirements.txt` | `pip install -r requirements.txt` |
+| `cp .env.example .env` | `copy .env.example .env` |
+
+Fill in the keys in `.env`. Then, with the virtual environment still active, run the tests and build a first edition (the database tables are created automatically):
+
+```bash
+python -m pytest -q tests
+python -m pipeline.main --dry-run
+python -m pipeline.main
 ```
 
 `--dry-run` prints the edition without saving or sending anything.
 
+To change the sources, search queries, keyword filters or time windows, edit [`pipeline/sources.yaml`](pipeline/sources.yaml). No code changes needed.
+
 ### 3. Set up the web app (Node.js 20+)
 
-```powershell
+```bash
 cd web
 npm install
-"DATABASE_URL=<your Neon connection string>" | Out-File -Encoding utf8 .env.local
+```
+
+Create `web/.env.local` containing one line, `DATABASE_URL=<your Neon connection string>`, then start the app:
+
+```bash
 npm run dev
 ```
 
