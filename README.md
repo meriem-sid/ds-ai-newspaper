@@ -73,3 +73,7 @@ Open http://localhost:3000.
 - On the **Variables** tab, add `WEB_APP_URL` with your Vercel URL.
 
 Then open *Actions → Daily edition → Run workflow* and tick **Dry run** to check the setup. After that, the workflow runs automatically every day at 06:00 UTC.
+
+## License
+
+[MIT](LICENSE)
