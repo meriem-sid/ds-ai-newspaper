@@ -131,8 +131,11 @@ def main() -> int:
             saved = db.save_edition(conn, edition)
             db.PgSeenStore(conn).record(cleaned, kept)  # only after a successful save
             deadlines = db.deadlines_within(conn, notify.DEADLINE_DAYS)
+            # Digest the edition as stored, so a same-day re-run reports the merged edition.
+            stored = db.load_latest_edition(conn, edition.edition_date)
         if not args.no_notify:
-            sent = notify.notify(edition, deadlines, saved["edition_number"])
+            digest_edition = stored[0] if stored else edition
+            sent = notify.notify(digest_edition, deadlines, saved["edition_number"])
             log.info("notifications: %s", ", ".join(f"{k}={'sent' if v else 'skipped'}" for k, v in sent.items()))
     elif args.remember:
         local_store.record(cleaned, kept)

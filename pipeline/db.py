@@ -78,35 +78,49 @@ ARTICLE_COLUMNS = (
 
 
 def save_edition(conn: psycopg.Connection, edition: Edition) -> dict[str, int]:
-    """Upsert the edition row, insert articles (URL-unique: a story already
-    published on an earlier day is skipped, never duplicated)."""
+    """Insert today's edition and its articles (URL-unique: a story already
+    published on an earlier day is skipped, never duplicated).
+
+    A second run on the same day (e.g. a manual run after the cron) only ADDS
+    stories: the morning's headline and front page stay, and the re-run's
+    front-page picks are filed under research instead of stacking a second front page.
+    """
     with conn.transaction(), conn.cursor() as cur:
+        existing = cur.execute(
+            """SELECT e.id, EXISTS (SELECT 1 FROM articles a WHERE a.edition_id = e.id AND a.category = 'front_page')
+               FROM editions e WHERE e.edition_date = %s""",
+            (edition.edition_date,),
+        ).fetchone()
         cur.execute(
             """INSERT INTO editions (edition_date, summary_headline, item_counts)
                VALUES (%s, %s, %s::jsonb)
                ON CONFLICT (edition_date) DO UPDATE
-                 SET summary_headline = EXCLUDED.summary_headline, item_counts = EXCLUDED.item_counts
+                 SET summary_headline = COALESCE(NULLIF(editions.summary_headline, ''), EXCLUDED.summary_headline),
+                     item_counts = editions.item_counts || jsonb_build_object('last_rerun', EXCLUDED.item_counts)
                RETURNING id""",
             (edition.edition_date, edition.summary_headline, psycopg.types.json.Json(edition.stats)),
         )
         edition_id = cur.fetchone()[0]
+        has_front_page = bool(existing and existing[1])
         inserted = 0
         placeholders = ", ".join(["%s"] * len(ARTICLE_COLUMNS))
         for a in edition.articles:
+            category = "research" if (a.category == "front_page" and has_front_page) else a.category
             cur.execute(
                 f"INSERT INTO articles ({', '.join(ARTICLE_COLUMNS)}) VALUES ({placeholders}) "
                 "ON CONFLICT (url) DO NOTHING",
                 (
-                    edition_id, a.category, a.title, a.what_happened, a.why_it_matters, a.url, a.source[:100],
+                    edition_id, category, a.title, a.what_happened, a.why_it_matters, a.url, a.source[:100],
                     a.relevance_score, a.deadline, a.tags, a.related_urls, a.event_start, a.event_timezone,
                     a.is_remote, a.event_format, a.job_level, a.published_at,
                 ),
             )
             inserted += cur.rowcount
         edition_no = cur.execute("SELECT COUNT(*) FROM editions WHERE edition_date <= %s", (edition.edition_date,)).fetchone()[0]
-    result = {"edition_id": edition_id, "edition_number": edition_no, "inserted": inserted, "skipped_existing": len(edition.articles) - inserted}
-    log.info("saved edition %s (No. %d): %d articles inserted, %d already existed",
-             edition.edition_date, edition_no, inserted, result["skipped_existing"])
+    result = {"edition_id": edition_id, "edition_number": edition_no, "inserted": inserted,
+              "skipped_existing": len(edition.articles) - inserted, "rerun": existing is not None}
+    log.info("saved edition %s (No. %d%s): %d articles inserted, %d already existed",
+             edition.edition_date, edition_no, ", same-day re-run" if existing else "", inserted, result["skipped_existing"])
     return result
 
 
@@ -124,11 +138,14 @@ def _row_to_article(r) -> Article:
     )
 
 
-def load_latest_edition(conn: psycopg.Connection) -> tuple[Edition, int] | None:
+def load_latest_edition(conn: psycopg.Connection, edition_date: str | None = None) -> tuple[Edition, int] | None:
+    """The edition as stored (merged across same-day runs): latest, or for `edition_date`."""
     row = conn.execute(
         """SELECT id, to_char(edition_date, 'YYYY-MM-DD'), coalesce(summary_headline, ''),
                   (SELECT COUNT(*) FROM editions e2 WHERE e2.edition_date <= e.edition_date)
-           FROM editions e ORDER BY edition_date DESC LIMIT 1"""
+           FROM editions e WHERE %s::date IS NULL OR edition_date = %s::date
+           ORDER BY edition_date DESC LIMIT 1""",
+        (edition_date, edition_date),
     ).fetchone()
     if row is None:
         return None
