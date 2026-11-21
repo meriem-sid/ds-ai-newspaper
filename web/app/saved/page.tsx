@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import ArticleCard from "@/components/ArticleCard";
-import { EmptyNote } from "@/components/Section";
+import { EmptyNote, StoryGrid } from "@/components/Section";
 import { getSaved, todayUTC } from "@/lib/data";
 import { CATEGORY_LABELS } from "@/lib/format";
 import PageHeader, { ListSkeleton } from "@/components/PageHeader";
@@ -26,17 +26,17 @@ async function SavedList() {
     .map(([cat, label]) => ({ label, items: articles.filter((a) => a.category === cat) }))
     .filter((g) => g.items.length);
   return (
-    <div className="space-y-12">
+    <div className="space-y-16">
       {groups.map((g) => (
         <section key={g.label} aria-label={g.label}>
-          <h2 className="mb-5 border-b-2 border-rule-strong pb-1.5 font-serif text-2xl font-bold">
-            {g.label} <span className="kicker align-middle text-muted">{g.items.length}</span>
+          <h2 className="mb-8 border-t-2 border-rule-strong pt-3 font-serif text-[1.6rem] font-semibold text-ink">
+            {g.label} <span className="ml-2 align-middle font-sans text-[0.8125rem] font-medium text-muted">{g.items.length}</span>
           </h2>
-          <div className="grid gap-x-8 gap-y-10 md:grid-cols-2 lg:grid-cols-3">
+          <StoryGrid>
             {g.items.map((a) => (
               <ArticleCard key={a.id} article={a} today={today} showEditionDate />
             ))}
-          </div>
+          </StoryGrid>
         </section>
       ))}
     </div>

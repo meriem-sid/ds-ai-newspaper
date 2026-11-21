@@ -292,8 +292,17 @@ def _parse_dt(value: str | None) -> str | None:
 _TYPOGRAPHY = str.maketrans({"‑": "-", "‐": "-", " ": " ", " ": " "})
 
 
+def strip_inline_latex(text: str) -> str:
+    """"$R^2$" -> "R^2", but leave prices alone ("$67,500 ... $25,000")."""
+    def repl(m: re.Match) -> str:
+        inner = m.group(1)
+        return inner if re.search(r"[\\^_{}]", inner) or re.fullmatch(r"[A-Za-z]", inner) else m.group(0)
+
+    return re.sub(r"\$([^$\n]{1,60})\$", repl, text)
+
+
 def _first_sentences(text: str, n: int) -> str:
-    text = re.sub(r"\$([^$\n]{1,60})\$", r"\1", text.translate(_TYPOGRAPHY))  # inline LaTeX from arXiv
+    text = strip_inline_latex(text.translate(_TYPOGRAPHY))
     parts = re.split(r"(?<=[.!?])\s+", text.strip())
     return " ".join(parts[:n])
 

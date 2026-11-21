@@ -6,7 +6,7 @@ import DeadlineBanner from "./DeadlineBanner";
 import FrontPageHero from "./FrontPageHero";
 import JobsSection from "./JobsSection";
 import Masthead from "./Masthead";
-import Section, { EmptyNote } from "./Section";
+import Section, { EmptyNote, StoryGrid } from "./Section";
 import WebinarList from "./WebinarList";
 
 /** A full edition: masthead, urgent deadlines, front page and the four sections. */
@@ -27,11 +27,11 @@ export default async function EditionView({ date }: { date?: string }) {
 
       <Section id="research" title="Research & Deep Dives" count={by("research").length}>
         {by("research").length ? (
-          <div className="grid gap-x-8 gap-y-10 md:grid-cols-2 lg:grid-cols-3">
+          <StoryGrid>
             {by("research").map((a) => (
               <ArticleCard key={a.id} article={a} today={today} />
             ))}
-          </div>
+          </StoryGrid>
         ) : (
           <EmptyNote>No research cleared the bar today.</EmptyNote>
         )}
@@ -39,11 +39,11 @@ export default async function EditionView({ date }: { date?: string }) {
 
       <Section id="hackathons" title="Hackathons & Competitions" count={hackathons.length}>
         {hackathons.length ? (
-          <div className="grid gap-x-8 gap-y-10 md:grid-cols-2 lg:grid-cols-3">
+          <StoryGrid>
             {hackathons.map((a) => (
               <ArticleCard key={a.id} article={a} today={today} />
             ))}
-          </div>
+          </StoryGrid>
         ) : (
           <EmptyNote>No new open hackathons or competitions in this edition.</EmptyNote>
         )}
@@ -64,7 +64,7 @@ function NoEdition({ date, nav }: { date?: string; nav: string[] }) {
   if (nav.length === 0) {
     return (
       <div className="mx-auto mt-24 max-w-xl text-center">
-        <h1 className="font-serif text-3xl font-bold">No editions yet</h1>
+        <h1 className="font-serif text-3xl font-semibold text-ink">No editions yet</h1>
         <p className="mt-3 text-muted">
           Run the pipeline once (<code className="font-mono text-sm">python -m pipeline.main</code>) to publish the first edition.
         </p>
@@ -76,7 +76,7 @@ function NoEdition({ date, nav }: { date?: string; nav: string[] }) {
   const after = date ? [...nav].reverse().find((d) => d > date) : undefined;
   return (
     <div className="mx-auto mt-24 max-w-xl text-center">
-      <h1 className="font-serif text-3xl font-bold">No edition {date ? `for ${longDate(date)}` : "found"}</h1>
+      <h1 className="text-balance font-serif text-3xl font-semibold text-ink">No edition {date ? `for ${longDate(date)}` : "found"}</h1>
       <p className="mt-4 flex justify-center gap-6 font-sans text-sm">
         {before && (
           <Link className="text-link underline" href={`/edition/${before}`}>

@@ -1,74 +1,127 @@
 @import "tailwindcss";
 
-/* Newsprint palette. Light = warm paper; dark = ink-black page with paper-white type. */
+/*
+ * Theme tokens. Light is the default; dark applies when <html data-theme="dark">
+ * (set before first paint by the inline script in app/layout.tsx), or — with JS
+ * disabled — when the OS prefers dark. Neither palette uses pure white or black.
+ */
 :root {
-  --paper: #f6f3ec;
-  --card: #fbf9f4;
-  --ink: #1b1a17;
-  --muted: #5f5b52;
-  --rule: #d9d3c5;
-  --rule-strong: #1b1a17;
-  --accent: #a3261b; /* urgent / deadlines */
-  --accent-soft: #f6e3df;
-  --link: #1d3f73;
-  --chip: #ece7db;
+  color-scheme: light;
+  --paper: #f6f2ea;        /* warm newsprint page */
+  --surface: #fbf8f2;      /* raised areas: inputs, callouts */
+  --ink: #23201b;          /* headlines — deep charcoal */
+  --text: #35312a;         /* body copy — slightly softer than headlines */
+  --muted: #6e685d;        /* metadata, captions (≥ 4.5:1 on paper) */
+  --rule: #e2dbcd;         /* hairlines between stories */
+  --rule-strong: #2f2b25;  /* section rules, masthead */
+  --accent: #9a3b2c;       /* deadlines / urgency — muted brick */
+  --accent-soft: #f3e1da;
+  --callout: #efe9dd;      /* "Why it matters" surface */
+  --callout-edge: #c9a985; /* its left edge — warm ochre */
+  --link: #2b4c7e;         /* hover / focus on headlines */
+  --chip: #ebe4d6;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #1d2026;        /* soft slate, not black */
+  --surface: #252931;
+  --ink: #ece7de;          /* warm off-white headlines */
+  --text: #cfc9be;         /* warm gray body — avoids halation */
+  --muted: #9a958b;
+  --rule: #343943;
+  --rule-strong: #8f8a80;
+  --accent: #e3907f;
+  --accent-soft: #3a2a28;
+  --callout: #262a32;
+  --callout-edge: #8c7356;
+  --link: #a9c2ea;
+  --chip: #2e333c;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #121212;
-    --card: #1a1a19;
-    --ink: #ebe7de;
-    --muted: #a39e93;
-    --rule: #34322e;
-    --rule-strong: #ebe7de;
-    --accent: #ef7d6e;
-    --accent-soft: #3a1f1b;
-    --link: #9cbcf0;
-    --chip: #2a2926;
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --paper: #1d2026;
+    --surface: #252931;
+    --ink: #ece7de;
+    --text: #cfc9be;
+    --muted: #9a958b;
+    --rule: #343943;
+    --rule-strong: #8f8a80;
+    --accent: #e3907f;
+    --accent-soft: #3a2a28;
+    --callout: #262a32;
+    --callout-edge: #8c7356;
+    --link: #a9c2ea;
+    --chip: #2e333c;
   }
 }
 
 @theme inline {
   --color-paper: var(--paper);
-  --color-card: var(--card);
+  --color-surface: var(--surface);
   --color-ink: var(--ink);
+  --color-text: var(--text);
   --color-muted: var(--muted);
   --color-rule: var(--rule);
   --color-rule-strong: var(--rule-strong);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
+  --color-callout: var(--callout);
+  --color-callout-edge: var(--callout-edge);
   --color-link: var(--link);
   --color-chip: var(--chip);
   --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-inter), system-ui, sans-serif;
 }
 
-body {
-  background: var(--paper);
-  color: var(--ink);
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
-/* Small-caps section labels used across the paper. */
+body {
+  background: var(--paper);
+  color: var(--text);
+  font-feature-settings: "kern", "liga", "onum"; /* old-style figures sit better in serif body text */
+  text-rendering: optimizeLegibility;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Section labels and the few places that keep small caps. */
 .kicker {
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 0.7rem;
+  font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
-/* Clickable headline: no underline until hover/focus, keeps the newsprint feel. */
+/* Headlines: no underline; colour shift on hover, underline only for keyboard focus. */
 .headline-link {
+  color: inherit;
   text-decoration: none;
-  text-underline-offset: 3px;
+  transition: color 0.15s ease;
 }
-.headline-link:hover,
+.headline-link:hover {
+  color: var(--link);
+}
 .headline-link:focus-visible {
+  color: var(--link);
   text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
 }
 
 :focus-visible {
   outline: 2px solid var(--link);
   outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
 }

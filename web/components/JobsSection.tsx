@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Article } from "@/lib/data";
 import ArticleCard from "./ArticleCard";
-import { EmptyNote } from "./Section";
+import { EmptyNote, StoryGrid } from "./Section";
 
 const FILTERS = [
   { key: "all", label: "All", test: () => true },
@@ -16,7 +16,7 @@ type FilterKey = (typeof FILTERS)[number]["key"];
 
 export function JobFilters({ value, onChange, jobs }: { value: FilterKey; onChange: (k: FilterKey) => void; jobs: Article[] }) {
   return (
-    <div role="group" aria-label="Filter jobs" className="flex flex-wrap gap-1.5">
+    <div role="group" aria-label="Filter jobs" className="flex flex-wrap gap-2">
       {FILTERS.map((f) => {
         const n = jobs.filter(f.test).length;
         const active = value === f.key;
@@ -26,11 +26,11 @@ export function JobFilters({ value, onChange, jobs }: { value: FilterKey; onChan
             type="button"
             aria-pressed={active}
             onClick={() => onChange(f.key)}
-            className={`kicker rounded-full border px-3 py-1 transition-colors ${
-              active ? "border-rule-strong bg-ink text-paper" : "border-rule text-muted hover:border-rule-strong hover:text-ink"
+            className={`rounded-full border px-3.5 py-1.5 font-sans text-[0.8125rem] font-medium transition-colors ${
+              active ? "border-ink bg-ink text-paper" : "border-rule text-muted hover:border-rule-strong/60 hover:text-ink"
             }`}
           >
-            {f.label} <span className="opacity-60">{n}</span>
+            {f.label} <span className="ml-1 tabular-nums opacity-60">{n}</span>
           </button>
         );
       })}
@@ -43,17 +43,17 @@ export default function JobsSection({ jobs, today }: { jobs: Article[]; today: s
   const shown = jobs.filter(FILTERS.find((f) => f.key === filter)!.test);
   return (
     <>
-      <div className="mb-5">
+      <div className="mb-8">
         <JobFilters value={filter} onChange={setFilter} jobs={jobs} />
       </div>
       {shown.length === 0 ? (
         <EmptyNote>No jobs match this filter in this edition.</EmptyNote>
       ) : (
-        <div className="grid gap-x-8 gap-y-8 md:grid-cols-2">
+        <StoryGrid cols={2}>
           {shown.map((a) => (
             <ArticleCard key={a.id} article={a} today={today} />
           ))}
-        </div>
+        </StoryGrid>
       )}
     </>
   );

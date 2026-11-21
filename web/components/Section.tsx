@@ -12,11 +12,11 @@ export default function Section({
   aside?: React.ReactNode;
 }) {
   return (
-    <section aria-labelledby={`${id}-heading`} className="mt-12">
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b-2 border-rule-strong pb-1.5">
-        <h2 id={`${id}-heading`} className="font-serif text-2xl font-bold">
+    <section aria-labelledby={`${id}-heading`} className="mt-16 sm:mt-20">
+      <div className="mb-8 flex flex-wrap items-baseline justify-between gap-3 border-t-2 border-rule-strong pt-3">
+        <h2 id={`${id}-heading`} className="font-serif text-[1.6rem] font-semibold tracking-[-0.01em] text-ink sm:text-[1.85rem]">
           {title}
-          {count !== undefined && <span className="kicker ml-2 align-middle text-muted">{count}</span>}
+          {count !== undefined && <span className="ml-3 align-middle font-sans text-[0.8125rem] font-medium text-muted">{count}</span>}
         </h2>
         {aside}
       </div>
@@ -25,6 +25,17 @@ export default function Section({
   );
 }
 
+/** Newspaper columns: stories separated by hairline rules instead of boxes. */
+export function StoryGrid({ children, cols = 3 }: { children: React.ReactNode; cols?: 2 | 3 }) {
+  return (
+    <div
+      className={`grid gap-x-10 gap-y-12 md:grid-cols-2 ${cols === 3 ? "xl:grid-cols-3" : ""} [&>*]:border-t [&>*]:border-rule [&>*]:pt-6`}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function EmptyNote({ children }: { children: React.ReactNode }) {
-  return <p className="font-sans text-sm text-muted">{children}</p>;
+  return <p className="font-sans text-[0.9rem] text-muted">{children}</p>;
 }

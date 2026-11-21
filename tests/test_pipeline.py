@@ -238,3 +238,10 @@ def test_send_telegram_skips_without_credentials(monkeypatch):
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
     monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
     assert notify.send_telegram("hi") is False
+
+
+def test_strip_inline_latex_keeps_prices():
+    from pipeline.editor import strip_inline_latex
+    assert strip_inline_latex("boosts $R^2$ and $k$ neighbours") == "boosts R^2 and k neighbours"
+    money = "a $67,500 total prize pool and a $25,000 top prize"
+    assert strip_inline_latex(money) == money

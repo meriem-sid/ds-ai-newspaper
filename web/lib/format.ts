@@ -48,9 +48,14 @@ export function eventWhen(iso: string, tz: string | null): { date: string; time:
   return { date, time: `${hhmm} UTC${tz && !/^(utc|gmt|z)$/i.test(tz) ? ` (${tz})` : ""}` };
 }
 
-/** Strip inline LaTeX delimiters copied from arXiv abstracts: "$R^2$" → "R^2". */
+/**
+ * Strip inline LaTeX delimiters copied from arXiv abstracts: "$R^2$" → "R^2", "$k$" → "k".
+ * Only when the content looks like maths, so prices ("$67,500 ... $25,000") stay intact.
+ */
 export function plain(text: string): string {
-  return text.replace(/\$([^$\n]{1,60})\$/g, "$1");
+  return text.replace(/\$([^$\n]{1,60})\$/g, (match, inner: string) =>
+    /[\\^_{}]/.test(inner) || /^[A-Za-z]$/.test(inner) ? inner : match,
+  );
 }
 
 export function hostOf(url: string): string {
