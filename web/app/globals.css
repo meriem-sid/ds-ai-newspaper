@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+/* Newsprint palette. Light = warm paper; dark = ink-black page with paper-white type. */
+:root {
+  --paper: #f6f3ec;
+  --card: #fbf9f4;
+  --ink: #1b1a17;
+  --muted: #5f5b52;
+  --rule: #d9d3c5;
+  --rule-strong: #1b1a17;
+  --accent: #a3261b; /* urgent / deadlines */
+  --accent-soft: #f6e3df;
+  --link: #1d3f73;
+  --chip: #ece7db;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #121212;
+    --card: #1a1a19;
+    --ink: #ebe7de;
+    --muted: #a39e93;
+    --rule: #34322e;
+    --rule-strong: #ebe7de;
+    --accent: #ef7d6e;
+    --accent-soft: #3a1f1b;
+    --link: #9cbcf0;
+    --chip: #2a2926;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-link: var(--link);
+  --color-chip: var(--chip);
+  --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* Small-caps section labels used across the paper. */
+.kicker {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Clickable headline: no underline until hover/focus, keeps the newsprint feel. */
+.headline-link {
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+.headline-link:hover,
+.headline-link:focus-visible {
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}

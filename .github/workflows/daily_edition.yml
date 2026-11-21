@@ -1,0 +1,76 @@
+name: Daily edition
+
+on:
+  schedule:
+    # 06:00 UTC every day. GitHub may start scheduled runs a few minutes late at busy times.
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: build and print the edition, write nothing, send nothing"
+        type: boolean
+        default: false
+      no_notify:
+        description: "Save the edition but skip the Telegram/email digest"
+        type: boolean
+        default: false
+
+# Never run two editions at once (e.g. a manual run overlapping the cron).
+concurrency:
+  group: daily-edition
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  edition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Secrets: Settings → Secrets and variables → Actions → "Secrets"
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+      KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+      KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      # Non-secret settings: same page → "Variables" (all optional)
+      WEB_APP_URL: ${{ vars.WEB_APP_URL }}
+      NOTIFY_EMAIL_TO: ${{ vars.NOTIFY_EMAIL_TO }}
+      GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.8-flash' }}
+      GEMINI_FALLBACK_MODELS: ${{ vars.GEMINI_FALLBACK_MODELS || 'gemini-3.7-flash,gemini-3.5-flash-lite' }}
+      PYTHONIOENCODING: utf-8
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Unit tests
+        run: python -m pytest -q tests
+
+      - name: Build today's edition
+        run: |
+          args=()
+          if [ "${{ inputs.dry_run }}" = "true" ]; then args+=(--dry-run); fi
+          if [ "${{ inputs.no_notify }}" = "true" ]; then args+=(--no-notify); fi
+          python -m pipeline.main "${args[@]}"
+
+      - name: Keep the edition JSON (14 days)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: edition-${{ github.run_id }}
+          path: .cache/edition-*.json
+          retention-days: 14
+          if-no-files-found: ignore

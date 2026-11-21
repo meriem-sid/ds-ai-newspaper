@@ -1,0 +1,21 @@
+# Secrets — never commit (covers .env.local etc. in every folder)
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.cache/
+
+# Node / Next.js
+node_modules/
+web/.next/
+web/out/
+*.tsbuildinfo
+.vercel
+
+# Local tooling
+.claude/
