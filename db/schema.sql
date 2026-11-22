@@ -62,3 +62,18 @@ CREATE TABLE IF NOT EXISTS seen_items (
 );
 
 CREATE INDEX IF NOT EXISTS idx_seen_items_seen_at ON seen_items (seen_at);
+
+-- Daily puzzle leaderboard (web/app/api/games). One entry per visitor per puzzle
+-- per day: visitors are identified by a salted SHA-256 of their IP, never the IP itself.
+CREATE TABLE IF NOT EXISTS game_scores (
+    id          SERIAL PRIMARY KEY,
+    game        VARCHAR(20) NOT NULL,          -- 'sudoku' | 'binary'
+    puzzle_date DATE NOT NULL,
+    nickname    VARCHAR(20) NOT NULL,
+    seconds     INT NOT NULL CHECK (seconds > 0),
+    ip_hash     CHAR(64) NOT NULL,
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (game, puzzle_date, ip_hash)
+);
+
+CREATE INDEX IF NOT EXISTS idx_game_scores_board ON game_scores (game, puzzle_date, seconds);

@@ -42,11 +42,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Skip to content
         </a>
         <header className="sticky top-0 z-40 border-b border-rule bg-paper/90 backdrop-blur supports-[backdrop-filter]:bg-paper/75">
-          <nav aria-label="Main" className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-5 sm:px-8">
-            <Link href="/" className="whitespace-nowrap font-serif text-lg font-semibold tracking-tight text-ink">
+          <nav aria-label="Main" className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-4 sm:gap-4 sm:px-8">
+            <Link href="/" className="whitespace-nowrap font-serif text-base font-semibold tracking-tight text-ink sm:text-lg">
               DS &amp; AI<span className="hidden font-normal italic text-muted sm:inline"> Daily</span>
             </Link>
-            <div className="flex items-center gap-1 sm:gap-3">
+            <div className="flex items-center gap-0 sm:gap-3">
               {/* usePathname() is URL data: Cache Components requires a Suspense boundary. */}
               <Suspense fallback={<NavLinksFallback />}>
                 <NavLinks />
