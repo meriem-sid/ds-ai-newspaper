@@ -3,7 +3,6 @@
 import { useState } from "react";
 import type { Article } from "@/lib/data";
 import JobCard from "./JobCard";
-import { pullQuotesFor } from "./PullQuote";
 import { EmptyNote, StoryGrid } from "./Section";
 
 // Internships sit under Entry Level (with their own badge on the card).
@@ -63,7 +62,7 @@ export default function JobsSection({ jobs, today }: { jobs: Article[]; today: s
         {shown.length === 0 ? (
           <EmptyNote>No {tab === "all" ? "" : `${active.label.toLowerCase()} `}roles{remoteOnly ? " marked remote" : ""} in this edition.</EmptyNote>
         ) : (
-          <StoryGrid pullQuotes={pullQuotesFor(shown)}>
+          <StoryGrid>
             {shown.map((j) => (
               <JobCard key={j.id} job={j} today={today} />
             ))}

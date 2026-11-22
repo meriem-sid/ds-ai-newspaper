@@ -56,11 +56,11 @@ export default function ArticleCard({
         <>
           {/* The lead story reads like a newspaper lead: deck under the headline, then a drop-cap paragraph. */}
           {article.why_it_matters && (
-            <p className="mt-3 max-w-[60ch] text-pretty font-serif text-[1.2rem] italic leading-snug text-muted sm:text-[1.3rem]">
+            <p className="mt-3 max-w-4xl text-pretty font-serif text-[1.2rem] italic leading-snug text-muted sm:text-[1.35rem]">
               {plain(article.why_it_matters)}
             </p>
           )}
-          <p className={`np-body drop-cap mt-4 border-t border-rule pt-4 text-text ${BODY.hero}`}>{plain(article.what_happened)}</p>
+          <p className={`np-body np-lead-body drop-cap mt-4 border-t border-rule pt-4 text-text ${BODY.hero}`}>{plain(article.what_happened)}</p>
         </>
       ) : (
         <>

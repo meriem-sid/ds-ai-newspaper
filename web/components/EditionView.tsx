@@ -3,7 +3,7 @@ import { getEdition, getEditionNav, getUrgentDeadlines, todayUTC, type Article }
 import { longDate } from "@/lib/format";
 import ArticleCard from "./ArticleCard";
 import DeadlineBanner from "./DeadlineBanner";
-import FrontPageHero, { type InsideEntry } from "./FrontPageHero";
+import FrontPageHero from "./FrontPageHero";
 import JobsSection from "./JobsSection";
 import Masthead, { type IndexEntry } from "./Masthead";
 import Section, { EmptyNote, StoryGrid, type Tone } from "./Section";
@@ -49,12 +49,6 @@ export default async function EditionView({ date }: { date?: string }) {
   add("jobs", "Jobs", "Jobs", "job", by("job"), (items) => <JobsSection jobs={items} today={today} />);
   add("webinars", "Events", "Webinars & Events", "webinar", by("webinar"), (items) => <WebinarList events={items} today={today} />);
 
-  // Front-page "Inside today's paper" box: each section's top headline.
-  const inside: InsideEntry[] = sections.map((s) => {
-    const top = [...s.items].sort(byScore)[0];
-    return { id: s.id, label: s.label, count: s.items.length, headline: top.company ? `${top.title} · ${top.company}` : top.title };
-  });
-
   const index: IndexEntry[] = [
     ...(front.length ? [{ id: "front", label: "Front page", count: front.length }] : []),
     ...sections.map((s) => ({ id: s.id, label: s.label, count: s.items.length })),
@@ -64,7 +58,7 @@ export default async function EditionView({ date }: { date?: string }) {
     <>
       <Masthead edition={edition} nav={nav} index={index} storyCount={articles.length} closingSoon={urgent.length} />
       <DeadlineBanner articles={urgent} today={today} />
-      <FrontPageHero articles={front} today={today} inside={inside} />
+      <FrontPageHero articles={front} today={today} />
       {sections.map((s) => (
         <Section key={s.id} id={s.id} tone={s.tone} title={s.title} count={s.items.length}>
           {s.body}

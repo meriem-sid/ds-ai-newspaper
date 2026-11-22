@@ -359,3 +359,12 @@ body {
 :root[data-style="colorful"] .np-pullquote {
   border-top-color: var(--accent);
 }
+
+/* Front-page lead: text set in two ruled columns across the page on large screens. */
+@media (min-width: 1024px) {
+  .np-lead-body {
+    column-count: 2;
+    column-gap: 2.5rem;
+    column-rule: 1px solid var(--rule);
+  }
+}
