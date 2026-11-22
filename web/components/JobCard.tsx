@@ -22,7 +22,7 @@ export default function JobCard({ job, today }: { job: Article; today: string })
   return (
     <article
       aria-label={`${job.title}${job.company ? ` at ${job.company}` : ""}`}
-      className={`flex h-full flex-col transition-opacity duration-200 ${isRead ? "opacity-55 hover:opacity-90 focus-within:opacity-90" : ""}`}
+      className={`flex flex-col transition-opacity duration-200 ${isRead ? "opacity-55 hover:opacity-90 focus-within:opacity-90" : ""}`}
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 font-sans text-[0.75rem]">
         {job.job_level && (
@@ -45,9 +45,9 @@ export default function JobCard({ job, today }: { job: Article; today: string })
         {where && <span className="text-muted">{where}</span>}
       </p>
 
-      <p className="mt-3 max-w-[65ch] text-pretty text-[1rem] leading-[1.6] text-text">{plain(job.what_happened)}</p>
+      <p className="np-body mt-2.5 text-[0.98rem] leading-[1.6] text-text">{plain(job.what_happened)}</p>
 
-      <footer className="mt-auto flex items-center gap-3 pt-4">
+      <footer className="flex items-center gap-3 pt-3">
         <p className="min-w-0 flex-1 font-sans text-[0.78rem] text-muted">
           {deadlineDays !== null && deadlineDays >= 0 ? (
             <span className={deadlineDays <= 7 ? "font-semibold text-accent" : ""}>

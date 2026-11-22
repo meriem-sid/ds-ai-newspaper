@@ -7,15 +7,15 @@ import { useArticleFlags } from "@/lib/readerState";
 type Variant = "hero" | "lead" | "standard";
 
 const TITLE: Record<Variant, string> = {
-  hero: "text-[1.9rem] leading-[1.15] sm:text-[2.6rem] sm:leading-[1.1]",
-  lead: "text-[1.3rem] leading-snug",
-  standard: "text-[1.2rem] leading-snug",
+  hero: "text-[2rem] leading-[1.08] sm:text-[2.9rem] sm:leading-[1.04]",
+  lead: "text-[1.3rem] leading-[1.2]",
+  standard: "text-[1.15rem] leading-[1.25]",
 };
 
 const BODY: Record<Variant, string> = {
-  hero: "text-[1.1rem] leading-[1.7] sm:text-[1.175rem]",
-  lead: "text-[1.0625rem] leading-[1.65]",
-  standard: "text-[1.0625rem] leading-[1.65]",
+  hero: "text-[1.1rem] leading-[1.65] sm:text-[1.15rem]",
+  lead: "text-[1rem] leading-[1.6]",
+  standard: "text-[1rem] leading-[1.6]",
 };
 
 export default function ArticleCard({
@@ -42,30 +42,41 @@ export default function ArticleCard({
   return (
     <article
       aria-label={article.title}
-      className={`flex flex-col ${variant === "standard" ? "h-full" : ""} transition-opacity duration-200 ${
-        flags.is_read ? "opacity-55 hover:opacity-90 focus-within:opacity-90" : ""
-      }`}
+      className={`flex flex-col transition-opacity duration-200 ${flags.is_read ? "opacity-55 hover:opacity-90 focus-within:opacity-90" : ""}`}
     >
       <Meta article={article} today={today} showEditionDate={showEditionDate} />
 
-      <h3 className={`font-headline mt-2 text-balance tracking-[-0.01em] text-ink ${TITLE[variant]}`}>
+      <h3 className={`font-headline mt-1.5 text-balance tracking-[-0.01em] text-ink ${TITLE[variant]}`}>
         <a href={article.url} target="_blank" rel="noopener noreferrer" className="headline-link" onClick={markReadOnOpen}>
           {plain(article.title)}
         </a>
       </h3>
 
-      <p className={`mt-3 max-w-[65ch] text-pretty text-text ${BODY[variant]}`}>{plain(article.what_happened)}</p>
-
-      {article.why_it_matters && (
-        <aside aria-label="Why it matters" className="mt-4 max-w-[65ch] rounded-r-md border-l-[3px] border-callout-edge bg-callout px-4 py-3">
-          <p className="font-sans text-[0.7rem] font-semibold uppercase tracking-[0.1em] text-muted">Why it matters</p>
-          <p className="mt-1 text-pretty text-[0.98rem] leading-[1.6] text-text">{plain(article.why_it_matters)}</p>
-        </aside>
+      {variant === "hero" ? (
+        <>
+          {/* The lead story reads like a newspaper lead: deck under the headline, then a drop-cap paragraph. */}
+          {article.why_it_matters && (
+            <p className="mt-3 max-w-[60ch] text-pretty font-serif text-[1.2rem] italic leading-snug text-muted sm:text-[1.3rem]">
+              {plain(article.why_it_matters)}
+            </p>
+          )}
+          <p className={`np-body drop-cap mt-4 border-t border-rule pt-4 text-text ${BODY.hero}`}>{plain(article.what_happened)}</p>
+        </>
+      ) : (
+        <>
+          <p className={`np-body mt-2 text-text ${BODY[variant]}`}>{plain(article.what_happened)}</p>
+          {article.why_it_matters && (
+            <p className="why-note mt-2.5 text-[0.95rem] leading-[1.55] text-text">
+              <span className="why-label">Why it matters </span>
+              {plain(article.why_it_matters)}
+            </p>
+          )}
+        </>
       )}
 
-      <footer className={`flex items-center gap-3 pt-4 ${variant === "standard" ? "mt-auto" : ""}`}>
+      <footer className="flex items-center gap-3 pt-3">
         <ul className="flex min-w-0 flex-1 flex-wrap gap-x-2.5 gap-y-1 font-sans text-[0.75rem] text-muted" aria-label="Tags">
-          {article.tags.slice(0, 4).map((t) => (
+          {article.tags.slice(0, 3).map((t) => (
             <li key={t}>#{t}</li>
           ))}
           {article.related_urls.length > 0 && (

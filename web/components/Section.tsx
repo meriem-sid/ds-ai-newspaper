@@ -1,3 +1,5 @@
+import BalancedColumns from "./BalancedColumns";
+
 export type Tone = "front" | "research" | "hackathon" | "job" | "webinar" | "resource";
 
 /** category → section colour (colourful style; classic renders them all as plain rules) */
@@ -26,7 +28,7 @@ export default function Section({
   aside?: React.ReactNode;
 }) {
   return (
-    <section id={id} aria-labelledby={`${id}-heading`} className="mt-16 scroll-mt-20 sm:mt-20">
+    <section id={id} aria-labelledby={`${id}-heading`} className="mt-12 scroll-mt-20 sm:mt-14">
       <SectionHeading id={`${id}-heading`} title={title} tone={tone} count={count} aside={aside} />
       {children}
     </section>
@@ -36,7 +38,7 @@ export default function Section({
 /** A rule + title (classic) or a colour-coded label on a coloured rule (colourful). */
 export function SectionHeading({ id, title, tone, count, aside }: { id?: string; title: string; tone?: Tone; count?: number; aside?: React.ReactNode }) {
   return (
-    <div data-tone={tone} className="section-head mb-8 flex flex-wrap items-baseline justify-between gap-3 pt-3">
+    <div data-tone={tone} className="section-head mb-6 flex flex-wrap items-baseline justify-between gap-3 pt-2.5">
       <h2 id={id} className="font-headline text-[1.6rem] tracking-[-0.01em] sm:text-[1.85rem]">
         <span className="section-title">{title}</span>
         {count !== undefined && <span className="ml-3 align-middle font-sans text-[0.8125rem] font-medium text-muted">{count}</span>}
@@ -46,14 +48,12 @@ export function SectionHeading({ id, title, tone, count, aside }: { id?: string;
   );
 }
 
-/** Newspaper columns: stories separated by hairline rules instead of boxes. */
-export function StoryGrid({ children, cols = 3 }: { children: React.ReactNode; cols?: 2 | 3 }) {
+/** Newspaper columns that end level (see BalancedColumns). */
+export function StoryGrid({ children, cols = 3, filler }: { children: React.ReactNode; cols?: 2 | 3; filler?: React.ReactNode }) {
   return (
-    <div
-      className={`grid gap-x-10 gap-y-12 md:grid-cols-2 ${cols === 3 ? "xl:grid-cols-3" : ""} [&>*]:border-t [&>*]:border-rule [&>*]:pt-6`}
-    >
+    <BalancedColumns cols={cols} filler={filler}>
       {children}
-    </div>
+    </BalancedColumns>
   );
 }
 

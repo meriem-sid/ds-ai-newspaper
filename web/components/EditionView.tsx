@@ -5,67 +5,70 @@ import ArticleCard from "./ArticleCard";
 import DeadlineBanner from "./DeadlineBanner";
 import FrontPageHero from "./FrontPageHero";
 import JobsSection from "./JobsSection";
-import Masthead from "./Masthead";
-import Section, { EmptyNote, StoryGrid } from "./Section";
+import Masthead, { type IndexEntry } from "./Masthead";
+import Section, { EmptyNote, StoryGrid, type Tone } from "./Section";
+import PullQuote from "./PullQuote";
 import WebinarList from "./WebinarList";
 
-/** A full edition: masthead, urgent deadlines, front page and the four sections. */
+/**
+ * A full edition laid out like a broadsheet: masthead + index, urgent deadlines, the front
+ * page, then only the sections that have stories today (no empty headings, no holes).
+ */
 export default async function EditionView({ date }: { date?: string }) {
   const [result, nav, urgent] = await Promise.all([getEdition(date), getEditionNav(), getUrgentDeadlines(7)]);
   const today = todayUTC();
 
   if (!result) return <NoEdition date={date} nav={nav.dates} />;
   const { edition, articles } = result;
-  const by = (c: Article["category"]) => articles.filter((a) => a.category === c);
-  const hackathons = by("hackathon").sort((a, b) => (a.deadline ?? "9999").localeCompare(b.deadline ?? "9999"));
+  const byScore = (a: Article, b: Article) => (b.relevance_score ?? 0) - (a.relevance_score ?? 0);
+
+  // A quiet day can have no front page at all: promote the day's best stories instead,
+  // so the paper never opens straight onto section headings.
+  let front = articles.filter((a) => a.category === "front_page");
+  if (front.length === 0) {
+    front = articles.filter((a) => a.category === "research" || a.category === "resource").sort(byScore).slice(0, 3);
+  }
+  const onFront = new Set(front.map((a) => a.id));
+  const by = (c: Article["category"]) => articles.filter((a) => a.category === c && !onFront.has(a.id));
+
+  const sections: { id: string; label: string; title: string; tone: Tone; items: Article[]; body: React.ReactNode }[] = [];
+  const add = (id: string, label: string, title: string, tone: Tone, items: Article[], body: (items: Article[]) => React.ReactNode) => {
+    if (items.length) sections.push({ id, label, title, tone, items, body: body(items) });
+  };
+  const quoteFor = (items: Article[]) => {
+    const top = [...items].sort(byScore).find((a) => a.why_it_matters);
+    return top ? <PullQuote text={top.why_it_matters!} source={top.title} /> : undefined;
+  };
+  const columns = (items: Article[]) => (
+    <StoryGrid filler={quoteFor(items)}>
+      {items.map((a) => (
+        <ArticleCard key={a.id} article={a} today={today} />
+      ))}
+    </StoryGrid>
+  );
+  add("research", "Research", "Research & Deep Dives", "research", by("research"), columns);
+  add("resources", "Tools", "Tools & Resources", "resource", by("resource"), columns);
+  add("hackathons", "Hackathons", "Hackathons & Competitions", "hackathon",
+    by("hackathon").sort((a, b) => (a.deadline ?? "9999").localeCompare(b.deadline ?? "9999")), columns);
+  add("jobs", "Jobs", "Jobs", "job", by("job"), (items) => <JobsSection jobs={items} today={today} />);
+  add("webinars", "Events", "Webinars & Events", "webinar", by("webinar"), (items) => <WebinarList events={items} today={today} />);
+
+  const index: IndexEntry[] = [
+    ...(front.length ? [{ id: "front", label: "Front page", count: front.length }] : []),
+    ...sections.map((s) => ({ id: s.id, label: s.label, count: s.items.length })),
+  ];
 
   return (
     <>
-      <Masthead edition={edition} nav={nav} />
+      <Masthead edition={edition} nav={nav} index={index} storyCount={articles.length} closingSoon={urgent.length} />
       <DeadlineBanner articles={urgent} today={today} />
-      <FrontPageHero articles={by("front_page")} today={today} />
-
-      <Section id="research" tone="research" title="Research & Deep Dives" count={by("research").length}>
-        {by("research").length ? (
-          <StoryGrid>
-            {by("research").map((a) => (
-              <ArticleCard key={a.id} article={a} today={today} />
-            ))}
-          </StoryGrid>
-        ) : (
-          <EmptyNote>No research cleared the bar today.</EmptyNote>
-        )}
-      </Section>
-
-      {by("resource").length > 0 && (
-        <Section id="resources" tone="resource" title="Tools & Resources" count={by("resource").length}>
-          <StoryGrid>
-            {by("resource").map((a) => (
-              <ArticleCard key={a.id} article={a} today={today} />
-            ))}
-          </StoryGrid>
+      <FrontPageHero articles={front} today={today} />
+      {sections.map((s) => (
+        <Section key={s.id} id={s.id} tone={s.tone} title={s.title} count={s.items.length}>
+          {s.body}
         </Section>
-      )}
-
-      <Section id="hackathons" tone="hackathon" title="Hackathons & Competitions" count={hackathons.length}>
-        {hackathons.length ? (
-          <StoryGrid>
-            {hackathons.map((a) => (
-              <ArticleCard key={a.id} article={a} today={today} />
-            ))}
-          </StoryGrid>
-        ) : (
-          <EmptyNote>No new open hackathons or competitions in this edition.</EmptyNote>
-        )}
-      </Section>
-
-      <Section id="jobs" tone="job" title="Jobs" count={by("job").length}>
-        {by("job").length ? <JobsSection jobs={by("job")} today={today} /> : <EmptyNote>No new matching roles in this edition.</EmptyNote>}
-      </Section>
-
-      <Section id="webinars" tone="webinar" title="Webinars & Events" count={by("webinar").length}>
-        {by("webinar").length ? <WebinarList events={by("webinar")} today={today} /> : <EmptyNote>No upcoming online events in this edition.</EmptyNote>}
-      </Section>
+      ))}
+      {articles.length === 0 && <EmptyNote>No stories cleared the bar in this edition.</EmptyNote>}
     </>
   );
 }

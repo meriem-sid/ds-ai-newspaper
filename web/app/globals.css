@@ -214,11 +214,17 @@ body {
 [data-tone="webinar"] { --sec: var(--tone-webinar); }
 [data-tone="resource"] { --sec: var(--tone-resource); }
 
+/* Classic: a double rule and a small-caps section name, like a broadsheet section flag. */
 .section-head {
-  border-top: 2px solid var(--rule-strong);
+  border-top: 4px double var(--rule-strong);
 }
 .section-title {
   color: var(--ink);
+}
+:root:not([data-style="colorful"]) .section-title {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 1.15rem;
 }
 :root[data-style="colorful"] .section-head {
   border-top: 4px solid var(--sec, var(--rule-strong));
@@ -232,6 +238,76 @@ body {
   font-size: 1.35rem;
   text-transform: uppercase;
   letter-spacing: 0.01em;
+}
+
+/* ── Newspaper layout ─────────────────────────────────────────────────────── */
+
+/* Stories flow down columns separated by hairline rules (no row gaps, like newsprint). */
+.np-columns {
+  column-gap: 2.5rem;
+  column-rule: 1px solid var(--rule);
+}
+/* Each story stays whole (a story split across columns left its tags or note stranded at
+   the top of the next column, and browsers don't honour break-before: avoid in multicol). */
+.np-story {
+  break-inside: avoid;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+/* Balanced layout (components/BalancedColumns.tsx): flex columns with the same 2.5rem
+   gutter and a hairline rule down its middle, matching the CSS-columns fallback. */
+.np-col + .np-col {
+  margin-left: 1.25rem;
+  padding-left: 1.25rem;
+  border-left: 1px solid var(--rule);
+}
+
+/* Body copy: justified + hyphenated where columns are wide enough to do it well. */
+@media (min-width: 768px) {
+  .np-body {
+    text-align: justify;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+  }
+}
+
+/* Drop cap on the lead story. */
+.drop-cap::first-letter {
+  float: left;
+  font-family: var(--headline-font);
+  font-weight: 700;
+  font-size: 3.6em;
+  line-height: 0.82;
+  margin: 0.08em 0.1em 0 0;
+  color: var(--ink);
+}
+
+/* "Why it matters": a run-in label, quiet in classic, highlighted in colourful. */
+.why-label {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-right: 0.25rem;
+}
+.why-note {
+  border-left: 2px solid var(--callout-edge);
+  padding-left: 0.75rem;
+}
+:root[data-style="colorful"] .why-note {
+  background: var(--callout);
+  border-left-width: 3px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0 4px 4px 0;
+}
+
+/* Masthead ears (the small boxes either side of the nameplate). */
+.ear {
+  border: 1px solid currentColor;
+  opacity: 0.85;
 }
 
 /* Section labels and the few places that keep small caps. */
@@ -270,4 +346,16 @@ body {
     transition: none !important;
     animation: none !important;
   }
+}
+
+/* Pull quote: fills the foot of a column that ends well short of its neighbours. */
+.np-pullquote {
+  margin: 0.25rem 0 1.5rem;
+  padding: 1.25rem 0.5rem;
+  border-top: 3px solid var(--rule-strong);
+  border-bottom: 1px solid var(--rule-strong);
+  text-align: center;
+}
+:root[data-style="colorful"] .np-pullquote {
+  border-top-color: var(--accent);
 }
