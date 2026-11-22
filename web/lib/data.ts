@@ -91,6 +91,60 @@ export async function getUrgentDeadlines(days = 7): Promise<Article[]> {
   );
 }
 
+/** Caps for today's running boards (keep the paper scannable on busy weeks). */
+export const BOARD_LIMITS = { hackathon: 9, job: 12, webinar: 8 } as const;
+export const JOB_BOARD_DAYS = 14;
+
+/**
+ * Today's page shows opportunities while they're still valid, not only the day they were
+ * found: hackathons until their deadline, events until they happen, jobs for two weeks.
+ * (Past editions keep showing just their own stories.)
+ */
+export async function getLiveBoards(): Promise<{ hackathons: Article[]; jobs: Article[]; webinars: Article[] }> {
+  await connection();
+  const db = sql();
+  const today = todayUTC();
+  const q = (where: string, order: string, limit: number, params: unknown[]) =>
+    db.unsafe<Article[]>(
+      `SELECT ${ARTICLE_COLUMNS} FROM articles a JOIN editions e ON e.id = a.edition_id WHERE ${where} ORDER BY ${order} LIMIT ${limit}`,
+      params as never[],
+    );
+  const [hackathons, jobs, webinars] = await Promise.all([
+    q(
+      `a.category = 'hackathon' AND COALESCE(a.deadline, (a.event_start AT TIME ZONE 'UTC')::date) >= $1::date`,
+      `COALESCE(a.deadline, (a.event_start AT TIME ZONE 'UTC')::date), a.relevance_score DESC`,
+      BOARD_LIMITS.hackathon,
+      [today],
+    ),
+    q(
+      `a.category = 'job' AND e.edition_date >= $1::date - ${JOB_BOARD_DAYS}`,
+      `e.edition_date DESC, a.relevance_score DESC`,
+      BOARD_LIMITS.job,
+      [today],
+    ),
+    q(
+      `a.category = 'webinar' AND COALESCE((a.event_start AT TIME ZONE 'UTC')::date, a.deadline) >= $1::date`,
+      `COALESCE(a.event_start, a.deadline::timestamptz)`,
+      BOARD_LIMITS.webinar,
+      [today],
+    ),
+  ]);
+  return { hackathons, jobs, webinars };
+}
+
+/** This week's best research from earlier editions, to top up a thin day (excluding ids already on the page). */
+export async function getRecentResearch(beforeDate: string, limit: number, excludeIds: number[]): Promise<Article[]> {
+  if (limit <= 0) return [];
+  await connection();
+  return sql().unsafe<Article[]>(
+    `SELECT ${ARTICLE_COLUMNS} FROM articles a JOIN editions e ON e.id = a.edition_id
+     WHERE a.category IN ('research', 'front_page') AND e.edition_date < $1::date
+       AND e.edition_date >= $1::date - 7 AND NOT (a.id = ANY($2::int[]))
+     ORDER BY a.relevance_score DESC, e.edition_date DESC LIMIT ${Number(limit)}`,
+    [beforeDate, excludeIds],
+  );
+}
+
 /** Articles for a visitor's saved list (ids come from their browser, so cap and sanitise them). */
 export async function getArticlesByIds(ids: number[]): Promise<Article[]> {
   const clean = [...new Set(ids.filter((n) => Number.isInteger(n) && n > 0))].slice(0, 300);

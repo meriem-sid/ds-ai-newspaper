@@ -5,6 +5,12 @@ import { countdownLabel, daysUntil, eventWhen, hostOf, plain, shortDate } from "
 import { useArticleFlags } from "@/lib/readerState";
 
 type Variant = "hero" | "lead" | "standard";
+export type Stamp = "new" | "dated";
+
+/** Marks something first found in today's edition. */
+export function NewBadge() {
+  return <span className="rounded-full bg-accent px-2 py-0.5 font-sans text-[0.68rem] font-bold uppercase tracking-[0.08em] text-paper">New</span>;
+}
 
 const TITLE: Record<Variant, string> = {
   hero: "text-[2rem] leading-[1.08] sm:text-[2.9rem] sm:leading-[1.04]",
@@ -23,11 +29,14 @@ export default function ArticleCard({
   today,
   variant = "standard",
   showEditionDate = false,
+  stamp,
 }: {
   article: Article;
   today: string;
   variant?: Variant;
   showEditionDate?: boolean;
+  /** On today's running boards: "new" = found today, "dated" = found on an earlier day. */
+  stamp?: Stamp;
 }) {
   // Read/saved state lives in this visitor's browser only (lib/readerState.ts).
   const { isRead, isSaved, setRead, setSaved } = useArticleFlags(article.id);
@@ -44,7 +53,7 @@ export default function ArticleCard({
       aria-label={article.title}
       className={`flex flex-col transition-opacity duration-200 ${flags.is_read ? "opacity-55 hover:opacity-90 focus-within:opacity-90" : ""}`}
     >
-      <Meta article={article} today={today} showEditionDate={showEditionDate} />
+      <Meta article={article} today={today} showEditionDate={showEditionDate} stamp={stamp} />
 
       <h3 className={`font-headline mt-1.5 text-balance tracking-[-0.01em] text-ink ${TITLE[variant]}`}>
         <a href={article.url} target="_blank" rel="noopener noreferrer" className="headline-link" onClick={markReadOnOpen}>
@@ -106,11 +115,12 @@ export default function ArticleCard({
 }
 
 /** Source in small caps, then plain-case facts; only the urgent deadline gets colour. */
-function Meta({ article, today, showEditionDate }: { article: Article; today: string; showEditionDate: boolean }) {
+function Meta({ article, today, showEditionDate, stamp }: { article: Article; today: string; showEditionDate: boolean; stamp?: Stamp }) {
   const year = Number(today.slice(0, 4));
   const facts: React.ReactNode[] = [];
 
-  if (showEditionDate) facts.push(<span key="ed">{shortDate(article.edition_date, year)}</span>);
+  if (stamp === "new") facts.push(<NewBadge key="new" />);
+  if (showEditionDate || stamp === "dated") facts.push(<span key="ed">Found {shortDate(article.edition_date, year)}</span>);
 
   if (article.category === "job") {
     if (article.job_level) facts.push(<Badge key="lvl">{article.job_level}</Badge>);

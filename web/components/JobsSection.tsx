@@ -17,7 +17,8 @@ type TabKey = (typeof TABS)[number]["key"];
 
 const LEVEL_ORDER: Record<string, number> = { internship: 0, entry: 1, mid: 2, senior: 3 };
 
-export default function JobsSection({ jobs, today }: { jobs: Article[]; today: string }) {
+/** `newOn`: on today's running board, badge jobs first found on this edition date as "New". */
+export default function JobsSection({ jobs, today, newOn }: { jobs: Article[]; today: string; newOn?: string }) {
   const [tab, setTab] = useState<TabKey>("all");
   const [remoteOnly, setRemoteOnly] = useState(false);
 
@@ -25,7 +26,12 @@ export default function JobsSection({ jobs, today }: { jobs: Article[]; today: s
   const active = TABS.find((t) => t.key === tab)!;
   const shown = pool
     .filter(active.test)
-    .sort((a, b) => (LEVEL_ORDER[a.job_level ?? ""] ?? 9) - (LEVEL_ORDER[b.job_level ?? ""] ?? 9) || (b.relevance_score ?? 0) - (a.relevance_score ?? 0));
+    .sort(
+      (a, b) =>
+        Number(b.edition_date === newOn) - Number(a.edition_date === newOn) || // today's finds first
+        (LEVEL_ORDER[a.job_level ?? ""] ?? 9) - (LEVEL_ORDER[b.job_level ?? ""] ?? 9) ||
+        (b.relevance_score ?? 0) - (a.relevance_score ?? 0),
+    );
 
   return (
     <>
@@ -64,7 +70,7 @@ export default function JobsSection({ jobs, today }: { jobs: Article[]; today: s
         ) : (
           <StoryGrid>
             {shown.map((j) => (
-              <JobCard key={j.id} job={j} today={today} />
+              <JobCard key={j.id} job={j} today={today} stamp={newOn ? (j.edition_date === newOn ? "new" : "dated") : undefined} />
             ))}
           </StoryGrid>
         )}

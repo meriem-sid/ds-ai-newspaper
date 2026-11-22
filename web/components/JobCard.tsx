@@ -3,7 +3,7 @@
 import type { Article } from "@/lib/data";
 import { countdownLabel, daysUntil, hostOf, plain, postedAgo, shortDate } from "@/lib/format";
 import { useArticleFlags } from "@/lib/readerState";
-import { IconButton } from "./ArticleCard";
+import { IconButton, NewBadge, type Stamp } from "./ArticleCard";
 
 const LEVEL_LABEL: Record<string, string> = {
   internship: "Internship",
@@ -13,7 +13,7 @@ const LEVEL_LABEL: Record<string, string> = {
 };
 
 /** A compact job listing: role, company, where, level, when — then one line of detail. */
-export default function JobCard({ job, today }: { job: Article; today: string }) {
+export default function JobCard({ job, today, stamp }: { job: Article; today: string; stamp?: Stamp }) {
   const { isRead, isSaved, setRead, setSaved } = useArticleFlags(job.id);
   const year = Number(today.slice(0, 4));
   const where = job.location || (job.is_remote ? "Remote" : null);
@@ -25,6 +25,7 @@ export default function JobCard({ job, today }: { job: Article; today: string })
       className={`flex flex-col transition-opacity duration-200 ${isRead ? "opacity-55 hover:opacity-90 focus-within:opacity-90" : ""}`}
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 font-sans text-[0.75rem]">
+        {stamp === "new" && <NewBadge />}
         {job.job_level && (
           <span className="rounded-full bg-chip px-2 py-0.5 font-medium text-ink/80">{LEVEL_LABEL[job.job_level] ?? job.job_level}</span>
         )}

@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { getEdition, getEditionNav, getUrgentDeadlines, todayUTC, type Article } from "@/lib/data";
+import { getEdition, getEditionNav, getLiveBoards, getRecentResearch, getUrgentDeadlines, todayUTC, type Article } from "@/lib/data";
 import { longDate } from "@/lib/format";
-import ArticleCard from "./ArticleCard";
+import ArticleCard, { type Stamp } from "./ArticleCard";
 import DeadlineBanner from "./DeadlineBanner";
 import FrontPageHero from "./FrontPageHero";
 import JobsSection from "./JobsSection";
@@ -10,17 +10,31 @@ import Section, { EmptyNote, StoryGrid, type Tone } from "./Section";
 import { pullQuotesFor } from "./PullQuote";
 import WebinarList from "./WebinarList";
 
+/** On today's page, top research up to this many stories with the week's best (dated). */
+const MIN_RESEARCH = 6;
+
 /**
  * A full edition laid out like a broadsheet: masthead + index, urgent deadlines, the front
- * page, then only the sections that have stories today (no empty headings, no holes).
+ * page, then only the sections that have stories (no empty headings, no holes).
+ *
+ * Today's page (no `date`) is a living paper: hackathons, jobs and events come from running
+ * boards (still open / recent), and thin research is topped up with the week's best. Anything
+ * found today is badged "New". A past edition (`date`) shows exactly what that day published.
  */
 export default async function EditionView({ date }: { date?: string }) {
-  const [result, nav, urgent] = await Promise.all([getEdition(date), getEditionNav(), getUrgentDeadlines(7)]);
+  const live = !date;
+  const [result, nav, urgent, boards] = await Promise.all([
+    getEdition(date),
+    getEditionNav(),
+    getUrgentDeadlines(7),
+    live ? getLiveBoards() : Promise.resolve(null),
+  ]);
   const today = todayUTC();
 
   if (!result) return <NoEdition date={date} nav={nav.dates} />;
   const { edition, articles } = result;
   const byScore = (a: Article, b: Article) => (b.relevance_score ?? 0) - (a.relevance_score ?? 0);
+  const stampOf = (a: Article): Stamp | undefined => (live ? (a.edition_date === edition.edition_date ? "new" : "dated") : undefined);
 
   // A quiet day can have no front page at all: promote the day's best stories instead,
   // so the paper never opens straight onto section headings.
@@ -35,19 +49,31 @@ export default async function EditionView({ date }: { date?: string }) {
   const add = (id: string, label: string, title: string, tone: Tone, items: Article[], body: (items: Article[]) => React.ReactNode) => {
     if (items.length) sections.push({ id, label, title, tone, items, body: body(items) });
   };
-  const columns = (items: Article[]) => (
+  // Only stamp items on boards/backfill: today's own news needs no "New" badge.
+  const columns = (items: Article[], stamped = false) => (
     <StoryGrid pullQuotes={pullQuotesFor(items)}>
       {items.map((a) => (
-        <ArticleCard key={a.id} article={a} today={today} />
+        <ArticleCard key={a.id} article={a} today={today} stamp={stamped ? stampOf(a) : undefined} />
       ))}
     </StoryGrid>
   );
-  add("research", "Research", "Research & Deep Dives", "research", by("research"), columns);
-  add("resources", "Tools", "Tools & Resources", "resource", by("resource"), columns);
+
+  let research = by("research");
+  if (live && research.length < MIN_RESEARCH) {
+    const extra = await getRecentResearch(edition.edition_date, MIN_RESEARCH - research.length, articles.map((a) => a.id));
+    research = [...research, ...extra];
+  }
+  const researchHasOlder = research.some((a) => a.edition_date !== edition.edition_date);
+
+  add("research", "Research", "Research & Deep Dives", "research", research, (items) => columns(items, researchHasOlder));
+  add("resources", "Tools", "Tools & Resources", "resource", by("resource"), (items) => columns(items));
   add("hackathons", "Hackathons", "Hackathons & Competitions", "hackathon",
-    by("hackathon").sort((a, b) => (a.deadline ?? "9999").localeCompare(b.deadline ?? "9999")), columns);
-  add("jobs", "Jobs", "Jobs", "job", by("job"), (items) => <JobsSection jobs={items} today={today} />);
-  add("webinars", "Events", "Webinars & Events", "webinar", by("webinar"), (items) => <WebinarList events={items} today={today} />);
+    boards ? boards.hackathons : by("hackathon").sort((a, b) => (a.deadline ?? "9999").localeCompare(b.deadline ?? "9999")),
+    (items) => columns(items, live));
+  add("jobs", "Jobs", "Jobs", "job", boards ? boards.jobs : by("job"),
+    (items) => <JobsSection jobs={items} today={today} newOn={live ? edition.edition_date : undefined} />);
+  add("webinars", "Events", "Webinars & Events", "webinar", boards ? boards.webinars : by("webinar"),
+    (items) => <WebinarList events={items} today={today} />);
 
   const index: IndexEntry[] = [
     ...(front.length ? [{ id: "front", label: "Front page", count: front.length }] : []),
@@ -56,7 +82,13 @@ export default async function EditionView({ date }: { date?: string }) {
 
   return (
     <>
-      <Masthead edition={edition} nav={nav} index={index} storyCount={articles.length} closingSoon={urgent.length} />
+      <Masthead
+        edition={edition}
+        nav={nav}
+        index={index}
+        storyCount={front.length + sections.reduce((n, s) => n + s.items.length, 0)}
+        closingSoon={urgent.length}
+      />
       <DeadlineBanner articles={urgent} today={today} />
       <FrontPageHero articles={front} today={today} />
       {sections.map((s) => (
