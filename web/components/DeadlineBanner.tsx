@@ -1,5 +1,6 @@
 import type { Article } from "@/lib/data";
 import { CATEGORY_LABELS, countdownLabel, daysUntil, plain, shortDate } from "@/lib/format";
+import ReadDim from "./ReadDim";
 
 /** Everything (from any edition) with a deadline in the next 7 days. */
 export default function DeadlineBanner({ articles, today }: { articles: Article[]; today: string }) {
@@ -18,7 +19,7 @@ export default function DeadlineBanner({ articles, today }: { articles: Article[
         {articles.map((a) => {
           const days = daysUntil(a.deadline!, today);
           return (
-            <li key={a.id} className={`flex items-baseline gap-3 ${a.is_read ? "opacity-60" : ""}`}>
+            <ReadDim key={a.id} id={a.id} className="flex items-baseline gap-3">
               <span className="w-[5.5rem] shrink-0 font-sans text-[0.78rem] font-semibold tabular-nums text-accent">{countdownLabel(days)}</span>
               <span className="min-w-0 leading-snug">
                 <a href={a.url} target="_blank" rel="noopener noreferrer" className="headline-link font-semibold text-ink">
@@ -29,7 +30,7 @@ export default function DeadlineBanner({ articles, today }: { articles: Article[
                   · {CATEGORY_LABELS[a.category]?.split(" ")[0] ?? a.category} · {shortDate(a.deadline!, year)}
                 </span>
               </span>
-            </li>
+            </ReadDim>
           );
         })}
       </ul>

@@ -1,12 +1,10 @@
 "use client";
 
-import { useOptimistic, useTransition } from "react";
-import { setBookmarked, setRead } from "@/app/actions";
 import type { Article } from "@/lib/data";
 import { countdownLabel, daysUntil, eventWhen, hostOf, plain, shortDate } from "@/lib/format";
+import { useArticleFlags } from "@/lib/readerState";
 
 type Variant = "hero" | "lead" | "standard";
-type Flags = { is_bookmarked: boolean; is_read: boolean };
 
 const TITLE: Record<Variant, string> = {
   hero: "text-[1.9rem] leading-[1.15] sm:text-[2.6rem] sm:leading-[1.1] font-semibold",
@@ -31,32 +29,14 @@ export default function ArticleCard({
   variant?: Variant;
   showEditionDate?: boolean;
 }) {
-  const [, startTransition] = useTransition();
-  const [flags, setFlags] = useOptimistic<Flags, Partial<Flags>>(
-    { is_bookmarked: article.is_bookmarked, is_read: article.is_read },
-    (state, patch) => ({ ...state, ...patch }),
-  );
+  // Read/saved state lives in this visitor's browser only (lib/readerState.ts).
+  const { isRead, isSaved, setRead, setSaved } = useArticleFlags(article.id);
+  const flags = { is_read: isRead, is_bookmarked: isSaved };
 
-  const toggleBookmark = () =>
-    startTransition(async () => {
-      setFlags({ is_bookmarked: !flags.is_bookmarked });
-      await setBookmarked(article.id, !flags.is_bookmarked);
-    });
-
-  const toggleRead = () =>
-    startTransition(async () => {
-      setFlags({ is_read: !flags.is_read });
-      await setRead(article.id, !flags.is_read);
-    });
-
-  // Opening the story counts as reading it.
+  const toggleBookmark = () => setSaved(!isSaved);
+  const toggleRead = () => setRead(!isRead);
   const markReadOnOpen = () => {
-    if (!flags.is_read) {
-      startTransition(async () => {
-        setFlags({ is_read: true });
-        await setRead(article.id, true);
-      });
-    }
+    if (!isRead) setRead(true); // opening the story counts as reading it
   };
 
   return (

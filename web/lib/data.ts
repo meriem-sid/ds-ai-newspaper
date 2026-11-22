@@ -15,8 +15,6 @@ export type Article = {
   relevance_score: number | null;
   deadline: string | null; // YYYY-MM-DD
   tags: string[];
-  is_bookmarked: boolean;
-  is_read: boolean;
   related_urls: string[];
   event_start: string | null; // ISO, UTC
   event_timezone: string | null;
@@ -39,7 +37,7 @@ export type EditionNav = { dates: string[]; first: string | null; last: string |
 const ARTICLE_COLUMNS = `
   a.id, a.category, a.title, a.what_happened, a.why_it_matters, a.url, a.source,
   a.relevance_score, to_char(a.deadline, 'YYYY-MM-DD') AS deadline,
-  coalesce(a.tags, '{}') AS tags, a.is_bookmarked, a.is_read,
+  coalesce(a.tags, '{}') AS tags,
   coalesce(a.related_urls, '{}') AS related_urls,
   to_char(a.event_start AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS event_start,
   a.event_timezone, a.is_remote, a.event_format, a.job_level,
@@ -89,11 +87,15 @@ export async function getUrgentDeadlines(days = 7): Promise<Article[]> {
   );
 }
 
-export async function getSaved(): Promise<Article[]> {
+/** Articles for a visitor's saved list (ids come from their browser, so cap and sanitise them). */
+export async function getArticlesByIds(ids: number[]): Promise<Article[]> {
+  const clean = [...new Set(ids.filter((n) => Number.isInteger(n) && n > 0))].slice(0, 300);
+  if (clean.length === 0) return [];
   await connection();
   return sql().unsafe<Article[]>(
     `SELECT ${ARTICLE_COLUMNS} FROM articles a JOIN editions e ON e.id = a.edition_id
-     WHERE a.is_bookmarked ORDER BY e.edition_date DESC, a.relevance_score DESC`,
+     WHERE a.id = ANY($1::int[]) ORDER BY e.edition_date DESC, a.relevance_score DESC`,
+    [clean],
   );
 }
 
@@ -123,10 +125,4 @@ export async function searchArchive(q: string, category?: string): Promise<Artic
      LIMIT 60`,
     [query, cat],
   );
-}
-
-export async function setArticleFlag(id: number, flag: "is_bookmarked" | "is_read", value: boolean) {
-  const db = sql();
-  if (flag === "is_bookmarked") await db`UPDATE articles SET is_bookmarked = ${value} WHERE id = ${id}`;
-  else await db`UPDATE articles SET is_read = ${value} WHERE id = ${id}`;
 }
