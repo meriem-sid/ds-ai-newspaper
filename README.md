@@ -73,7 +73,7 @@ Open http://localhost:3000.
 - On the **Secrets** tab, add: `GEMINI_API_KEY`, `GROQ_API_KEY`, `DATABASE_URL`, `TAVILY_API_KEY`, `KAGGLE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `RESEND_API_KEY`.
 - On the **Variables** tab, add `WEB_APP_URL` with your site's URL and `EMAIL_FROM` (an address on a domain verified in Resend).
 
-Then open *Actions → Daily edition → Run workflow* and tick **Dry run** to check the setup. After that, the workflow runs automatically every day at 06:00 UTC.
+Then open *Actions → Daily edition → Run workflow* and tick **Dry run** to check the setup. After that, the workflow runs automatically every day at 05:37 UTC.
 
 ## License
 

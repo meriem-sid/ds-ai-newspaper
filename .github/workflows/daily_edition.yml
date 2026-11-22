@@ -2,8 +2,9 @@ name: Daily edition
 
 on:
   schedule:
-    # 06:00 UTC every day. GitHub may start scheduled runs a few minutes late at busy times.
-    - cron: "0 6 * * *"
+    # 05:37 UTC every day (≈ 06:45–07:15 GMT+1 once the run finishes). Deliberately not on the
+    # hour: GitHub queues scheduled runs and delays are worst at :00 (one 06:00 run started 8h late).
+    - cron: "37 5 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
