@@ -4,9 +4,10 @@ and a link to the web app. Telegram (primary) and/or email via Resend (optional)
 Notification failures are logged, never raised: a dead bot token must not fail a
 run whose edition is already saved.
 
-Manual test (sends the latest saved edition's digest):
-    python -m pipeline.notify --test
-    python -m pipeline.notify --preview      # print only, send nothing
+Manual test (uses the latest saved edition):
+    python -m pipeline.notify --test         # Telegram digest
+    python -m pipeline.notify --preview      # print the Telegram digest, send nothing
+    python -m pipeline.notify --briefing     # email confirmed subscribers who haven't had it yet
 """
 from __future__ import annotations
 
@@ -257,6 +258,8 @@ def main() -> int:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--test", action="store_true", help="Send the latest edition's digest now.")
     group.add_argument("--preview", action="store_true", help="Print the digest; send nothing.")
+    group.add_argument("--briefing", action="store_true",
+                       help="Email the latest edition's briefing to confirmed subscribers who haven't had it yet.")
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -272,6 +275,20 @@ def main() -> int:
     if args.preview:
         print(build_digest(edition, deadlines, os.getenv("WEB_APP_URL"), number))
         return 0
+    if args.briefing:
+        if not email_configured():
+            log.error("set RESEND_API_KEY, EMAIL_FROM and WEB_APP_URL in .env first")
+            return 1
+        limit = int(os.getenv("EMAIL_DAILY_LIMIT", "95"))
+        with db.connect() as conn:
+            recipients = db.subscribers_due(conn, edition.edition_date, limit)
+        if not recipients:
+            log.warning("no confirmed subscribers are due a briefing for %s", edition.edition_date)
+            return 1
+        sent = send_briefings(recipients, edition, deadlines, number)
+        with db.connect() as conn:
+            db.mark_briefed(conn, sent, edition.edition_date)
+        return 0 if sent else 1
     result = notify(edition, deadlines, number)
     return 0 if any(result.values()) else 1
 
