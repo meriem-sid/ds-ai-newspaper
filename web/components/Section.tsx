@@ -1,4 +1,4 @@
-import BalancedColumns from "./BalancedColumns";
+import BalancedColumns, { type PullQuoteCandidate } from "./BalancedColumns";
 
 export type Tone = "front" | "research" | "hackathon" | "job" | "webinar" | "resource";
 
@@ -49,9 +49,9 @@ export function SectionHeading({ id, title, tone, count, aside }: { id?: string;
 }
 
 /** Newspaper columns that end level (see BalancedColumns). */
-export function StoryGrid({ children, cols = 3, filler }: { children: React.ReactNode; cols?: 2 | 3; filler?: React.ReactNode }) {
+export function StoryGrid({ children, cols = 3, pullQuotes }: { children: React.ReactNode; cols?: 2 | 3; pullQuotes?: PullQuoteCandidate[] }) {
   return (
-    <BalancedColumns cols={cols} filler={filler}>
+    <BalancedColumns cols={cols} pullQuotes={pullQuotes}>
       {children}
     </BalancedColumns>
   );

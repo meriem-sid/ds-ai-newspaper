@@ -3,11 +3,11 @@ import { getEdition, getEditionNav, getUrgentDeadlines, todayUTC, type Article }
 import { longDate } from "@/lib/format";
 import ArticleCard from "./ArticleCard";
 import DeadlineBanner from "./DeadlineBanner";
-import FrontPageHero from "./FrontPageHero";
+import FrontPageHero, { type InsideEntry } from "./FrontPageHero";
 import JobsSection from "./JobsSection";
 import Masthead, { type IndexEntry } from "./Masthead";
 import Section, { EmptyNote, StoryGrid, type Tone } from "./Section";
-import PullQuote from "./PullQuote";
+import { pullQuotesFor } from "./PullQuote";
 import WebinarList from "./WebinarList";
 
 /**
@@ -35,12 +35,8 @@ export default async function EditionView({ date }: { date?: string }) {
   const add = (id: string, label: string, title: string, tone: Tone, items: Article[], body: (items: Article[]) => React.ReactNode) => {
     if (items.length) sections.push({ id, label, title, tone, items, body: body(items) });
   };
-  const quoteFor = (items: Article[]) => {
-    const top = [...items].sort(byScore).find((a) => a.why_it_matters);
-    return top ? <PullQuote text={top.why_it_matters!} source={top.title} /> : undefined;
-  };
   const columns = (items: Article[]) => (
-    <StoryGrid filler={quoteFor(items)}>
+    <StoryGrid pullQuotes={pullQuotesFor(items)}>
       {items.map((a) => (
         <ArticleCard key={a.id} article={a} today={today} />
       ))}
@@ -53,6 +49,12 @@ export default async function EditionView({ date }: { date?: string }) {
   add("jobs", "Jobs", "Jobs", "job", by("job"), (items) => <JobsSection jobs={items} today={today} />);
   add("webinars", "Events", "Webinars & Events", "webinar", by("webinar"), (items) => <WebinarList events={items} today={today} />);
 
+  // Front-page "Inside today's paper" box: each section's top headline.
+  const inside: InsideEntry[] = sections.map((s) => {
+    const top = [...s.items].sort(byScore)[0];
+    return { id: s.id, label: s.label, count: s.items.length, headline: top.company ? `${top.title} · ${top.company}` : top.title };
+  });
+
   const index: IndexEntry[] = [
     ...(front.length ? [{ id: "front", label: "Front page", count: front.length }] : []),
     ...sections.map((s) => ({ id: s.id, label: s.label, count: s.items.length })),
@@ -62,7 +64,7 @@ export default async function EditionView({ date }: { date?: string }) {
     <>
       <Masthead edition={edition} nav={nav} index={index} storyCount={articles.length} closingSoon={urgent.length} />
       <DeadlineBanner articles={urgent} today={today} />
-      <FrontPageHero articles={front} today={today} />
+      <FrontPageHero articles={front} today={today} inside={inside} />
       {sections.map((s) => (
         <Section key={s.id} id={s.id} tone={s.tone} title={s.title} count={s.items.length}>
           {s.body}
