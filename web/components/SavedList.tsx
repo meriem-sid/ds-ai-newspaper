@@ -6,7 +6,7 @@ import { CATEGORY_LABELS } from "@/lib/format";
 import { useReaderState } from "@/lib/readerState";
 import ArticleCard from "./ArticleCard";
 import { ListSkeleton } from "./PageHeader";
-import { EmptyNote, StoryGrid } from "./Section";
+import { EmptyNote, SectionHeading, StoryGrid, TONE_BY_CATEGORY } from "./Section";
 
 type Loaded = { key: string; articles: Article[] } | { key: string; error: true };
 
@@ -48,16 +48,14 @@ export default function SavedList() {
 
   const today = new Date().toISOString().slice(0, 10);
   const groups = Object.entries(CATEGORY_LABELS)
-    .map(([cat, label]) => ({ label, items: articles.filter((a) => a.category === cat) }))
+    .map(([cat, label]) => ({ label, tone: TONE_BY_CATEGORY[cat], items: articles.filter((a) => a.category === cat) }))
     .filter((g) => g.items.length);
 
   return (
     <div className="space-y-16">
       {groups.map((g) => (
         <section key={g.label} aria-label={g.label}>
-          <h2 className="mb-8 border-t-2 border-rule-strong pt-3 font-serif text-[1.6rem] font-semibold text-ink">
-            {g.label} <span className="ml-2 align-middle font-sans text-[0.8125rem] font-medium text-muted">{g.items.length}</span>
-          </h2>
+          <SectionHeading title={g.label} tone={g.tone} count={g.items.length} />
           <StoryGrid>
             {g.items.map((a) => (
               <ArticleCard key={a.id} article={a} today={today} showEditionDate />

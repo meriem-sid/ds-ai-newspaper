@@ -4,6 +4,7 @@ import Script from "next/script";
 import { Suspense } from "react";
 import { Inter, Newsreader } from "next/font/google";
 import NavLinks, { NavLinksFallback } from "@/components/NavLinks";
+import StyleToggle from "@/components/StyleToggle";
 import ThemeToggle, { themeBootScript } from "@/components/ThemeToggle";
 import "./globals.css";
 
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 <NavLinks />
               </Suspense>
               <span aria-hidden className="mx-1 hidden h-5 w-px bg-rule sm:block" />
+              <StyleToggle />
               <ThemeToggle />
             </div>
           </nav>

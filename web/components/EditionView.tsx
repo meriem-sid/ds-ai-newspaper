@@ -25,7 +25,7 @@ export default async function EditionView({ date }: { date?: string }) {
       <DeadlineBanner articles={urgent} today={today} />
       <FrontPageHero articles={by("front_page")} today={today} />
 
-      <Section id="research" title="Research & Deep Dives" count={by("research").length}>
+      <Section id="research" tone="research" title="Research & Deep Dives" count={by("research").length}>
         {by("research").length ? (
           <StoryGrid>
             {by("research").map((a) => (
@@ -37,7 +37,7 @@ export default async function EditionView({ date }: { date?: string }) {
         )}
       </Section>
 
-      <Section id="hackathons" title="Hackathons & Competitions" count={hackathons.length}>
+      <Section id="hackathons" tone="hackathon" title="Hackathons & Competitions" count={hackathons.length}>
         {hackathons.length ? (
           <StoryGrid>
             {hackathons.map((a) => (
@@ -49,11 +49,11 @@ export default async function EditionView({ date }: { date?: string }) {
         )}
       </Section>
 
-      <Section id="jobs" title="Jobs & Internships" count={by("job").length}>
+      <Section id="jobs" tone="job" title="Jobs & Internships" count={by("job").length}>
         {by("job").length ? <JobsSection jobs={by("job")} today={today} /> : <EmptyNote>No new matching roles in this edition.</EmptyNote>}
       </Section>
 
-      <Section id="webinars" title="Webinars & Events" count={by("webinar").length}>
+      <Section id="webinars" tone="webinar" title="Webinars & Events" count={by("webinar").length}>
         {by("webinar").length ? <WebinarList events={by("webinar")} today={today} /> : <EmptyNote>No upcoming online events in this edition.</EmptyNote>}
       </Section>
     </>

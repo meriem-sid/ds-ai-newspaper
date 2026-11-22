@@ -1,27 +1,48 @@
+export type Tone = "front" | "research" | "hackathon" | "job" | "webinar" | "resource";
+
+/** category → section colour (colourful style; classic renders them all as plain rules) */
+export const TONE_BY_CATEGORY: Record<string, Tone> = {
+  front_page: "front",
+  research: "research",
+  hackathon: "hackathon",
+  job: "job",
+  webinar: "webinar",
+  resource: "resource",
+};
+
 export default function Section({
   id,
   title,
+  tone,
   count,
   children,
   aside,
 }: {
   id: string;
   title: string;
+  tone?: Tone;
   count?: number;
   children: React.ReactNode;
   aside?: React.ReactNode;
 }) {
   return (
     <section aria-labelledby={`${id}-heading`} className="mt-16 sm:mt-20">
-      <div className="mb-8 flex flex-wrap items-baseline justify-between gap-3 border-t-2 border-rule-strong pt-3">
-        <h2 id={`${id}-heading`} className="font-serif text-[1.6rem] font-semibold tracking-[-0.01em] text-ink sm:text-[1.85rem]">
-          {title}
-          {count !== undefined && <span className="ml-3 align-middle font-sans text-[0.8125rem] font-medium text-muted">{count}</span>}
-        </h2>
-        {aside}
-      </div>
+      <SectionHeading id={`${id}-heading`} title={title} tone={tone} count={count} aside={aside} />
       {children}
     </section>
+  );
+}
+
+/** A rule + title (classic) or a colour-coded label on a coloured rule (colourful). */
+export function SectionHeading({ id, title, tone, count, aside }: { id?: string; title: string; tone?: Tone; count?: number; aside?: React.ReactNode }) {
+  return (
+    <div data-tone={tone} className="section-head mb-8 flex flex-wrap items-baseline justify-between gap-3 pt-3">
+      <h2 id={id} className="font-headline text-[1.6rem] tracking-[-0.01em] sm:text-[1.85rem]">
+        <span className="section-title">{title}</span>
+        {count !== undefined && <span className="ml-3 align-middle font-sans text-[0.8125rem] font-medium text-muted">{count}</span>}
+      </h2>
+      {aside}
+    </div>
   );
 }
 

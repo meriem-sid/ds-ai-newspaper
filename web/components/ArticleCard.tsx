@@ -7,9 +7,9 @@ import { useArticleFlags } from "@/lib/readerState";
 type Variant = "hero" | "lead" | "standard";
 
 const TITLE: Record<Variant, string> = {
-  hero: "text-[1.9rem] leading-[1.15] sm:text-[2.6rem] sm:leading-[1.1] font-semibold",
-  lead: "text-[1.3rem] leading-snug font-semibold",
-  standard: "text-[1.2rem] leading-snug font-semibold",
+  hero: "text-[1.9rem] leading-[1.15] sm:text-[2.6rem] sm:leading-[1.1]",
+  lead: "text-[1.3rem] leading-snug",
+  standard: "text-[1.2rem] leading-snug",
 };
 
 const BODY: Record<Variant, string> = {
@@ -48,7 +48,7 @@ export default function ArticleCard({
     >
       <Meta article={article} today={today} showEditionDate={showEditionDate} />
 
-      <h3 className={`mt-2 text-balance font-serif tracking-[-0.01em] text-ink ${TITLE[variant]}`}>
+      <h3 className={`font-headline mt-2 text-balance tracking-[-0.01em] text-ink ${TITLE[variant]}`}>
         <a href={article.url} target="_blank" rel="noopener noreferrer" className="headline-link" onClick={markReadOnOpen}>
           {plain(article.title)}
         </a>
@@ -124,7 +124,7 @@ function Meta({ article, today, showEditionDate }: { article: Article; today: st
 
   return (
     <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 font-sans text-[0.78rem] text-muted">
-      <span className="kicker text-muted">{article.source || hostOf(article.url)}</span>
+      <span className="kicker text-kicker">{article.source || hostOf(article.url)}</span>
       {facts.map((f, i) => (
         <span key={i} className="flex items-center gap-2.5">
           <span aria-hidden className="h-1 w-1 rounded-full bg-rule-strong/40" />

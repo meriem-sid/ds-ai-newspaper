@@ -6,10 +6,11 @@ type Theme = "light" | "dark";
 const STORAGE_KEY = "theme";
 
 /**
- * Runs inline in <head> before first paint (see app/layout.tsx): saved choice
- * first, otherwise the OS preference. Prevents a flash of the wrong theme.
+ * Runs inline in <head> before first paint (see app/layout.tsx). Theme: saved choice,
+ * otherwise the OS preference. Style: saved choice, otherwise "classic".
+ * Prevents a flash of the wrong colours.
  */
-export const themeBootScript = `(function(){try{var t=localStorage.getItem('${STORAGE_KEY}');if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}var d=document.documentElement;d.dataset.theme=t;d.style.colorScheme=t}catch(e){}})()`;
+export const themeBootScript = `(function(){var d=document.documentElement;try{var t=localStorage.getItem('${STORAGE_KEY}');if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}d.dataset.theme=t;d.style.colorScheme=t;d.dataset.style=localStorage.getItem('style')==='colorful'?'colorful':'classic'}catch(e){d.dataset.style='classic'}})()`;
 
 function apply(theme: Theme) {
   const root = document.documentElement;

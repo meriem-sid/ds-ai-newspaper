@@ -15,8 +15,8 @@ export default function WebinarList({ events, today }: { events: Article[]; toda
             <div className="pt-1 text-center" aria-label={when ? `${when.date}${when.time ? `, ${when.time}` : ""}` : "Date to be announced"}>
               {when ? (
                 <>
-                  <div className="font-serif text-[2.2rem] font-semibold leading-none tabular-nums text-ink">{day}</div>
-                  <div className="kicker mt-1.5 text-accent">{month}</div>
+                  <div className="font-headline text-[2.2rem] leading-none tabular-nums text-ink">{day}</div>
+                  <div className="kicker mt-1.5 text-kicker">{month}</div>
                   {when.time && <div className="mt-1.5 font-sans text-[0.72rem] leading-tight text-muted">{when.time}</div>}
                 </>
               ) : (

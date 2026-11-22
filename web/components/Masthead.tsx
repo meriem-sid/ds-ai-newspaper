@@ -23,11 +23,11 @@ export default function Masthead({ edition, nav }: { edition: Edition; nav: Edit
       </div>
 
       {/* Nameplate */}
-      <div className="mt-8 border-y border-rule-strong py-6 text-center sm:mt-10 sm:py-8">
-        <h1 className="text-balance font-serif text-[2.4rem] font-bold leading-[1.05] tracking-[-0.02em] text-ink sm:text-[3.6rem] lg:text-[4.2rem]">
+      <div className="nameplate mt-8 px-4 py-6 text-center sm:mt-10 sm:py-8">
+        <h1 className="font-headline text-balance text-[2.4rem] leading-[1.05] tracking-[-0.02em] sm:text-[3.6rem] lg:text-[4.2rem]">
           The Data Science &amp; AI Newspaper
         </h1>
-        <p className="mt-3 font-sans text-[0.8125rem] text-muted">Research, releases, hackathons, jobs &amp; events — high signal, zero hype</p>
+        <p className="nameplate-sub mt-3 font-sans text-[0.8125rem]">Research, releases, hackathons, jobs &amp; events — high signal, zero hype</p>
       </div>
 
       {edition.summary_headline && (

@@ -1,60 +1,153 @@
 @import "tailwindcss";
 
 /*
- * Theme tokens. Light is the default; dark applies when <html data-theme="dark">
- * (set before first paint by the inline script in app/layout.tsx), or — with JS
- * disabled — when the OS prefers dark. Neither palette uses pure white or black.
+ * Design tokens: 2 styles × 2 themes, selected by attributes on <html>
+ * (set before first paint by the boot script in components/ThemeToggle.tsx):
+ *
+ *   data-style="classic"  (default) — monochrome broadsheet: black / gray / white, serif headlines
+ *   data-style="colorful"           — lively front page: blue nameplate, colour-coded sections, bold sans headlines
+ *   data-theme="light" | "dark"
+ *
+ * No palette uses pure #fff or #000.
  */
+
+/* ── Classic · light (also the no-JS default) ─────────────────────────────── */
 :root {
   color-scheme: light;
-  --paper: #f6f2ea;        /* warm newsprint page */
-  --surface: #fbf8f2;      /* raised areas: inputs, callouts */
-  --ink: #23201b;          /* headlines — deep charcoal */
-  --text: #35312a;         /* body copy — slightly softer than headlines */
-  --muted: #6e685d;        /* metadata, captions (≥ 4.5:1 on paper) */
-  --rule: #e2dbcd;         /* hairlines between stories */
-  --rule-strong: #2f2b25;  /* section rules, masthead */
-  --accent: #9a3b2c;       /* deadlines / urgency — muted brick */
-  --accent-soft: #f3e1da;
-  --callout: #efe9dd;      /* "Why it matters" surface */
-  --callout-edge: #c9a985; /* its left edge — warm ochre */
-  --link: #2b4c7e;         /* hover / focus on headlines */
-  --chip: #ebe4d6;
+  --paper: #f6f6f4;
+  --surface: #fcfcfb;
+  --ink: #1d1d1d;
+  --text: #333333;
+  --muted: #6a6a6a;
+  --rule: #dcdcd8;
+  --rule-strong: #1d1d1d;
+  --accent: #8e2a20;       /* used sparingly: deadlines only */
+  --accent-soft: #f1e6e3;
+  --callout: #efefec;
+  --callout-edge: #8a8a8a;
+  --link: #1f3f6e;
+  --chip: #e8e8e4;
+  --kicker: #6a6a6a;       /* source labels */
+  --nameplate-bg: transparent;
+  --nameplate-ink: #1d1d1d;
+  --nameplate-sub: #6a6a6a;
+  --headline-font: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  --headline-weight: 600;
+  --tone-front: #1d1d1d;
+  --tone-research: #1d1d1d;
+  --tone-hackathon: #1d1d1d;
+  --tone-job: #1d1d1d;
+  --tone-webinar: #1d1d1d;
+  --tone-resource: #1d1d1d;
+  --tone-ink: #f6f6f4;     /* text on a tone block */
 }
 
+/* ── Classic · dark ───────────────────────────────────────────────────────── */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --paper: #1d2026;        /* soft slate, not black */
-  --surface: #252931;
-  --ink: #ece7de;          /* warm off-white headlines */
-  --text: #cfc9be;         /* warm gray body — avoids halation */
-  --muted: #9a958b;
-  --rule: #343943;
-  --rule-strong: #8f8a80;
-  --accent: #e3907f;
-  --accent-soft: #3a2a28;
-  --callout: #262a32;
-  --callout-edge: #8c7356;
+  --paper: #1b1c1e;
+  --surface: #232427;
+  --ink: #ececea;
+  --text: #cdcdca;
+  --muted: #9b9b98;
+  --rule: #34353a;
+  --rule-strong: #b9b9b5;
+  --accent: #e0907f;
+  --accent-soft: #382826;
+  --callout: #25262a;
+  --callout-edge: #7c7c79;
   --link: #a9c2ea;
-  --chip: #2e333c;
+  --chip: #2d2e32;
+  --kicker: #9b9b98;
+  --nameplate-ink: #ececea;
+  --nameplate-sub: #9b9b98;
+  --tone-front: #ececea;
+  --tone-research: #ececea;
+  --tone-hackathon: #ececea;
+  --tone-job: #ececea;
+  --tone-webinar: #ececea;
+  --tone-resource: #ececea;
+  --tone-ink: #1b1c1e;
 }
 
+/* ── Colourful · light ────────────────────────────────────────────────────── */
+:root[data-style="colorful"] {
+  --paper: #faf9f6;
+  --surface: #fdfdfb;
+  --ink: #161a22;
+  --text: #2c3038;
+  --muted: #646a75;
+  --rule: #dfe2e7;
+  --rule-strong: #161a22;
+  --accent: #c8222c;
+  --accent-soft: #fde8e8;
+  --callout: #fff5d1;      /* yellow highlight box */
+  --callout-edge: #e8a90c;
+  --link: #0b5cad;
+  --chip: #eceef2;
+  --kicker: #c8222c;       /* red source labels */
+  --nameplate-bg: #0b5cad; /* the blue nameplate block */
+  --nameplate-ink: #fdfdfb;
+  --nameplate-sub: #cfe2f7;
+  --headline-font: var(--font-inter), system-ui, sans-serif;
+  --headline-weight: 800;
+  --tone-front: #c8222c;
+  --tone-research: #0b5cad;
+  --tone-hackathon: #b5520a; /* ≥ 4.5:1 with the white label text */
+  --tone-job: #18834a;
+  --tone-webinar: #7a3db8;
+  --tone-resource: #0e7c86;
+  --tone-ink: #fdfdfb;
+}
+
+/* ── Colourful · dark ─────────────────────────────────────────────────────── */
+:root[data-style="colorful"][data-theme="dark"] {
+  --paper: #171a20;
+  --surface: #1f232b;
+  --ink: #eef0f4;
+  --text: #cfd3da;
+  --muted: #9aa1ad;
+  --rule: #2f3440;
+  --rule-strong: #aeb4bf;
+  --accent: #ff7b7b;
+  --accent-soft: #3a2226;
+  --callout: #2a2a20;
+  --callout-edge: #c89a2a;
+  --link: #8cc0f5;
+  --chip: #2a2f39;
+  --kicker: #ff8a8a;
+  --nameplate-bg: #12457f;
+  --nameplate-ink: #f2f6fb;
+  --nameplate-sub: #a9c7ea;
+  --tone-front: #b8323a;
+  --tone-research: #1d5fa6;
+  --tone-hackathon: #a4500f;
+  --tone-job: #1d7a48;
+  --tone-webinar: #6c3fa3;
+  --tone-resource: #127079;
+  --tone-ink: #f4f6f9;
+}
+
+/* No JS: follow the OS for light/dark (classic style). */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     color-scheme: dark;
-    --paper: #1d2026;
-    --surface: #252931;
-    --ink: #ece7de;
-    --text: #cfc9be;
-    --muted: #9a958b;
-    --rule: #343943;
-    --rule-strong: #8f8a80;
-    --accent: #e3907f;
-    --accent-soft: #3a2a28;
-    --callout: #262a32;
-    --callout-edge: #8c7356;
+    --paper: #1b1c1e;
+    --surface: #232427;
+    --ink: #ececea;
+    --text: #cdcdca;
+    --muted: #9b9b98;
+    --rule: #34353a;
+    --rule-strong: #b9b9b5;
+    --accent: #e0907f;
+    --accent-soft: #382826;
+    --callout: #25262a;
+    --callout-edge: #7c7c79;
     --link: #a9c2ea;
-    --chip: #2e333c;
+    --chip: #2d2e32;
+    --kicker: #9b9b98;
+    --nameplate-ink: #ececea;
+    --nameplate-sub: #9b9b98;
   }
 }
 
@@ -72,6 +165,7 @@
   --color-callout-edge: var(--callout-edge);
   --color-link: var(--link);
   --color-chip: var(--chip);
+  --color-kicker: var(--kicker);
   --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-inter), system-ui, sans-serif;
 }
@@ -83,9 +177,61 @@ html {
 body {
   background: var(--paper);
   color: var(--text);
-  font-feature-settings: "kern", "liga", "onum"; /* old-style figures sit better in serif body text */
+  font-feature-settings: "kern", "liga";
   text-rendering: optimizeLegibility;
   transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Headlines follow the style: serif (classic) or heavy sans (colourful). */
+.font-headline {
+  font-family: var(--headline-font);
+  font-weight: var(--headline-weight);
+}
+:root[data-style="colorful"] .font-headline {
+  letter-spacing: -0.02em;
+}
+
+/* ── Masthead nameplate ───────────────────────────────────────────────────── */
+.nameplate {
+  background: var(--nameplate-bg);
+  color: var(--nameplate-ink);
+  border-top: 1px solid var(--rule-strong);
+  border-bottom: 1px solid var(--rule-strong);
+}
+.nameplate-sub {
+  color: var(--nameplate-sub);
+}
+:root[data-style="colorful"] .nameplate {
+  border: 0;
+  border-bottom: 6px solid var(--tone-front); /* red underline, like a tabloid masthead */
+}
+
+/* ── Section headers: a rule (classic) or a colour-coded label (colourful) ── */
+[data-tone="front"] { --sec: var(--tone-front); }
+[data-tone="research"] { --sec: var(--tone-research); }
+[data-tone="hackathon"] { --sec: var(--tone-hackathon); }
+[data-tone="job"] { --sec: var(--tone-job); }
+[data-tone="webinar"] { --sec: var(--tone-webinar); }
+[data-tone="resource"] { --sec: var(--tone-resource); }
+
+.section-head {
+  border-top: 2px solid var(--rule-strong);
+}
+.section-title {
+  color: var(--ink);
+}
+:root[data-style="colorful"] .section-head {
+  border-top: 4px solid var(--sec, var(--rule-strong));
+}
+:root[data-style="colorful"] .section-title {
+  display: inline-block;
+  background: var(--sec, var(--ink));
+  color: var(--tone-ink);
+  padding: 0.15rem 0.7rem 0.25rem;
+  margin-top: -1px;
+  font-size: 1.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
 }
 
 /* Section labels and the few places that keep small caps. */
