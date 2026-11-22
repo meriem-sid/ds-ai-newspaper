@@ -77,3 +77,24 @@ CREATE TABLE IF NOT EXISTS game_scores (
 );
 
 CREATE INDEX IF NOT EXISTS idx_game_scores_board ON game_scores (game, puzzle_date, seconds);
+
+-- Email briefing subscribers (double opt-in). Emails are stored lowercased.
+-- verify_token: one-time link in the confirmation email; unsubscribe_token: stable
+-- per subscriber, used in every briefing's unsubscribe link and List-Unsubscribe header.
+CREATE TABLE IF NOT EXISTS subscribers (
+    id                SERIAL PRIMARY KEY,
+    email             VARCHAR(254) UNIQUE NOT NULL,
+    status            VARCHAR(20) NOT NULL DEFAULT 'pending'
+                      CHECK (status IN ('pending', 'active', 'unsubscribed')),
+    verify_token      CHAR(64),
+    unsubscribe_token CHAR(64) UNIQUE NOT NULL,
+    created_at        TIMESTAMPTZ DEFAULT NOW(),
+    confirm_sent_at   TIMESTAMPTZ,              -- last confirmation email (throttles re-sends)
+    confirmed_at      TIMESTAMPTZ,
+    unsubscribed_at   TIMESTAMPTZ,
+    last_sent_on      DATE,                     -- last briefing date: never two briefings for one edition
+    signup_ip_hash    CHAR(64)                  -- salted hash, for sign-up rate limiting only
+);
+
+CREATE INDEX IF NOT EXISTS idx_subscribers_active ON subscribers (status) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_subscribers_signup ON subscribers (signup_ip_hash, confirm_sent_at);

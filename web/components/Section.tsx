@@ -26,7 +26,7 @@ export default function Section({
   aside?: React.ReactNode;
 }) {
   return (
-    <section aria-labelledby={`${id}-heading`} className="mt-16 sm:mt-20">
+    <section id={id} aria-labelledby={`${id}-heading`} className="mt-16 scroll-mt-20 sm:mt-20">
       <SectionHeading id={`${id}-heading`} title={title} tone={tone} count={count} aside={aside} />
       {children}
     </section>

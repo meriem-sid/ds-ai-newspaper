@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { Inter, Newsreader } from "next/font/google";
 import NavLinks, { NavLinksFallback } from "@/components/NavLinks";
 import StyleToggle from "@/components/StyleToggle";
+import SubscribeForm from "@/components/SubscribeForm";
 import ThemeToggle, { themeBootScript } from "@/components/ThemeToggle";
 import "./globals.css";
 
@@ -61,6 +62,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
         </main>
         <footer className="border-t border-rule">
+          <div className="mx-auto max-w-6xl px-5 pt-12 sm:px-8">
+            <SubscribeForm />
+          </div>
           <p className="mx-auto max-w-6xl px-5 py-8 text-center font-sans text-xs leading-relaxed text-muted sm:px-8">
             Compiled daily from research feeds, newsrooms, Kaggle, job boards and event listings. Every link goes to the original source.
           </p>

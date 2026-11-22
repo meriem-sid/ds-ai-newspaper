@@ -163,5 +163,20 @@ def deadlines_within(conn: psycopg.Connection, days: int) -> list[Article]:
     return [_row_to_article(r) for r in rows]
 
 
+def subscribers_due(conn: psycopg.Connection, edition_date: str, limit: int) -> list[tuple[int, str, str]]:
+    """Active subscribers who haven't had this edition's briefing yet: (id, email, unsubscribe_token)."""
+    return conn.execute(
+        """SELECT id, email, unsubscribe_token FROM subscribers
+           WHERE status = 'active' AND (last_sent_on IS NULL OR last_sent_on < %s::date)
+           ORDER BY confirmed_at NULLS LAST, id LIMIT %s""",
+        (edition_date, limit),
+    ).fetchall()
+
+
+def mark_briefed(conn: psycopg.Connection, ids: list[int], edition_date: str) -> None:
+    if ids:
+        conn.execute("UPDATE subscribers SET last_sent_on = %s::date WHERE id = ANY(%s)", (edition_date, ids))
+
+
 def now_utc() -> datetime:
     return datetime.now(timezone.utc)

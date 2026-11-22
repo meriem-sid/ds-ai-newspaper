@@ -358,3 +358,44 @@ def test_resources_only_reach_front_page_when_exceptional():
     assert cats["GitHub"] == "resource"          # 8: stays in Tools & Resources
     assert cats["HF Models"] == "front_page"     # 9: exceptional enough to lead
     assert cats["A"] == cats["B"] == "front_page"
+
+
+# ── Email briefing ───────────────────────────────────────────────────────────
+
+def test_briefing_is_scannable_escaped_and_has_unsubscribe(monkeypatch):
+    today = datetime.now(timezone.utc).date()
+    ed = Edition(edition_date=today.isoformat(), summary_headline="Big <news> & more", articles=[
+        _art("front_page", f"Lead {i} <b>", score=10 - i, url=f"https://a.com/{i}") for i in range(6)
+    ] + [_art("job", "Job"), _art("job", "Job 2", url="https://j.com/2"), _art("resource", "Tool", url="https://t.com")])
+    dl = [_art("hackathon", "Hack & Co", deadline=(today + timedelta(days=2)).isoformat(), url="https://h.com")]
+    subject, html_body, text = notify.build_briefing(ed, dl, "https://news.example.app/", 9)
+    assert "Big <news>" in subject and len(subject) <= 140
+    assert "Lead 0 &lt;b&gt;" in html_body and "Lead 5" not in html_body          # top 5, escaped
+    assert "Hack &amp; Co" in html_body and "in 2 days" in html_body
+    assert f'https://news.example.app/edition/{today.isoformat()}#jobs' in html_body and "2 jobs" in html_body
+    assert "https://news.example.app/games/sudoku" in html_body
+    assert notify.UNSUB_PLACEHOLDER in html_body and notify.UNSUB_PLACEHOLDER in text
+
+
+def test_send_briefings_personalises_unsubscribe_and_uses_idempotency(monkeypatch):
+    import httpx as _h
+    monkeypatch.setenv("WEB_APP_URL", "https://news.example.app")
+    monkeypatch.setenv("EMAIL_FROM", "Daily <b@example.com>")
+    monkeypatch.setenv("RESEND_API_KEY", "re_test")
+    calls = []
+    def fake_post(url, headers=None, json=None, timeout=None):
+        calls.append((url, headers, json))
+        return _h.Response(200, json={"data": [{"id": str(i)} for i in range(len(json))]})
+    monkeypatch.setattr(notify.httpx, "post", fake_post)
+    today = datetime.now(timezone.utc).date().isoformat()
+    ed = Edition(edition_date=today, summary_headline="H", articles=[_art("front_page", "Lead")])
+    recipients = [(i, f"u{i}@x.com", f"{i:064x}") for i in range(1, 151)]          # 150 → batches of 100 + 50
+    sent = notify.send_briefings(recipients, ed, [], 3)
+    assert sent == list(range(1, 151)) and len(calls) == 2
+    url, headers, payload = calls[0]
+    assert url.endswith("/emails/batch") and len(payload) == 100 and headers["Idempotency-Key"].startswith(f"briefing-{today}-1-100")
+    first = payload[0]
+    tok = f"{1:064x}"
+    assert first["to"] == ["u1@x.com"] and f"/unsubscribe?token={tok}" in first["html"] and notify.UNSUB_PLACEHOLDER not in first["text"]
+    assert first["headers"]["List-Unsubscribe"] == f"<https://news.example.app/api/unsubscribe?token={tok}>"
+    assert first["headers"]["List-Unsubscribe-Post"] == "List-Unsubscribe=One-Click"

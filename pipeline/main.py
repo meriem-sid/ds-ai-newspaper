@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 import textwrap
 from datetime import datetime, timezone
@@ -75,6 +76,22 @@ def print_edition(ed: Edition) -> None:
     print("═" * width)
 
 
+def send_subscriber_briefings(edition: Edition, deadlines, edition_number: int) -> None:
+    """Email active subscribers who haven't had this edition yet. Never fails the run."""
+    if not notify.email_configured():
+        log.info("email: RESEND_API_KEY / EMAIL_FROM / WEB_APP_URL not set; skipping subscriber briefing")
+        return
+    limit = int(os.getenv("EMAIL_DAILY_LIMIT", "95"))  # Resend free plan: 100 emails/day
+    try:
+        with db.connect() as conn:
+            recipients = db.subscribers_due(conn, edition.edition_date, limit)
+        sent = notify.send_briefings(recipients, edition, deadlines, edition_number)
+        with db.connect() as conn:
+            db.mark_briefed(conn, sent, edition.edition_date)
+    except Exception as exc:  # noqa: BLE001 — the edition is already saved; email is best-effort
+        log.error("email: briefing step failed: %s", exc)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build today's Data Science & AI Newspaper edition.")
     parser.add_argument("--no-llm", action="store_true", help="Skip the LLM; use a heuristic ranking (for testing ingest/clean).")
@@ -137,6 +154,7 @@ def main() -> int:
             digest_edition = stored[0] if stored else edition
             sent = notify.notify(digest_edition, deadlines, saved["edition_number"])
             log.info("notifications: %s", ", ".join(f"{k}={'sent' if v else 'skipped'}" for k, v in sent.items()))
+            send_subscriber_briefings(digest_edition, deadlines, saved["edition_number"])
     elif args.remember:
         local_store.record(cleaned, kept)
         log.info("recorded %d items in %s", len(cleaned), settings.seen_cache_path.relative_to(ROOT))
