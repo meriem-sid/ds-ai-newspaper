@@ -87,16 +87,28 @@ def test_deadline_requires_matching_evidence():
     assert verify_story(story(deadline="2026-12-05", deadline_evidence="Deadline is Dec 5"), news, TODAY).deadline is None
 
 
-def test_webinar_needs_evidenced_future_start_and_senior_jobs_drop():
+def test_webinar_needs_evidenced_future_start_and_job_levels_normalised():
     web = {0: item("LLM workshop", "https://lu.ma/x", bucket="C", category_hint="webinar",
                    snippet="Join us live on Dec 3, 2026 at 5pm UTC for a hands-on RAG workshop.")}
     ok = verify_story(story(event_start="2026-12-03T17:00:00Z", event_evidence="Dec 3, 2026 at 5pm UTC", event_format="Online"), web, TODAY)
     assert ok.category == "webinar" and ok.event_start.startswith("2026-12-03") and ok.event_format == "online"
     assert verify_story(story(event_start="2026-12-03T17:00:00Z", event_evidence="December 3rd"), web, TODAY) is None
     jobs = {0: item("ML Engineer", "https://jobs.lever.co/x", bucket="C", category_hint="job")}
-    assert verify_story(story(job_level="Senior"), jobs, TODAY) is None
-    assert verify_story(story(job_level="internship"), jobs, TODAY).job_level == "internship"
-    assert verify_story(story(job_level="whatever"), jobs, TODAY).job_level is None
+    # Every level is kept now; wording variants map onto internship / entry / mid / senior.
+    for given, stored in [("Senior", "senior"), ("Staff", "senior"), ("lead", "senior"), ("Mid-level", "mid"),
+                          ("junior", "entry"), ("New grad", "entry"), ("internship", "internship"), ("whatever", None)]:
+        assert verify_story(story(job_level=given), jobs, TODAY).job_level == stored, given
+
+
+def test_job_company_and_location_are_kept_and_cleaned():
+    jobs = {0: item("ML Engineer", "https://jobs.lever.co/x", bucket="C", category_hint="job")}
+    art = verify_story(story(job_level="mid", company=" Hugging Face ", location="Remote (EMEA)"), jobs, TODAY)
+    assert (art.company, art.location) == ("Hugging Face", "Remote (EMEA)")
+    art = verify_story(story(job_level="mid", company="null", location="Not stated"), jobs, TODAY)
+    assert (art.company, art.location) == (None, None)
+    # Non-job stories never carry job fields.
+    news = {0: item("News", "https://n.com")}
+    assert verify_story(story(company="Acme", job_level="senior"), news, TODAY).company is None
 
 
 def test_known_deadline_from_api_wins():
@@ -245,3 +257,49 @@ def test_strip_inline_latex_keeps_prices():
     assert strip_inline_latex("boosts $R^2$ and $k$ neighbours") == "boosts R^2 and k neighbours"
     money = "a $67,500 total prize pool and a $25,000 top prize"
     assert strip_inline_latex(money) == money
+
+
+def test_jobs_with_similar_titles_are_not_merged():
+    from pipeline.editor import _dedupe_articles
+    jobs = [
+        item("Spring Health: Senior Data Engineer", "https://a.com/j1", bucket="C", source="We Work Remotely"),
+        item("EnergyHub: Senior Data Engineer", "https://b.com/j2", bucket="C", source="We Work Remotely"),
+    ]
+    assert len(collapse_duplicates(jobs)) == 2
+    out, _ = clean(jobs, set(), ["spring health senior data engineer old posting"], now=NOW)
+    assert len(out) == 2  # cross-day headline matching is for news only
+    batch = {0: jobs[0], 1: jobs[1]}
+    arts = [verify_story(story(source_ids=[i], primary_id=i, title="Senior Data Engineer", company=c), batch, TODAY)
+            for i, c in enumerate(["Spring Health", "EnergyHub"])]
+    assert len(_dedupe_articles(arts)) == 2
+    # ...but the same role at the same company twice is still one item.
+    same = [verify_story(story(source_ids=[i], primary_id=i, title="Senior Data Engineer", company="EnergyHub"), batch, TODAY) for i in (0, 1)]
+    same[1].url = same[0].url + "?ref=x"
+    assert len(_dedupe_articles(same)) == 1
+
+
+def test_news_still_collapses_reworded_headlines():
+    news = [item("OpenAI releases GPT-6 open-weights model", "https://openai.com/x", source="OpenAI"),
+            item("Show HN: OpenAI releases GPT-6 open weights model today", "https://news.ycombinator.com/item?id=9", source="Hacker News")]
+    assert len(collapse_duplicates(news)) == 1
+
+
+def test_groq_chunks_respect_token_budget(monkeypatch):
+    monkeypatch.setattr(editor.settings, "groq_max_input_tokens", 1500)
+    monkeypatch.setattr(editor.settings, "groq_batch_size", 15)
+    batch = {i: item(f"Job {i}", f"https://j.com/{i}", bucket="C", snippet="x " * 400) for i in range(10)}  # ~230 tokens each
+    chunks = editor.groq_chunks(batch, "system prompt")
+    assert sum(len(c) for c in chunks) == 10 and len(chunks) > 1
+    assert all(editor.estimate_tokens(editor._batch_prompt(c)) <= 1500 for c in chunks)
+    # a single oversize item still gets its own chunk rather than being dropped
+    huge = {0: item("Huge", "https://j.com/h", bucket="C", snippet="y " * 5000)}
+    assert editor.groq_chunks(huge, "s") == [huge]
+
+
+def test_groq_oversize_detection():
+    import httpx as _h
+    mk = lambda code, text: _h.Response(code, text=text)
+    assert editor._groq_oversize(mk(413, "too big"))
+    assert editor._groq_oversize(mk(429, "on tokens per minute (TPM): Limit 8000, Requested 9123, please reduce"))
+    assert not editor._groq_oversize(mk(429, "on tokens per minute (TPM): Limit 8000, Used 6000, Requested 3000."))
+    assert not editor._groq_oversize(mk(500, "server error"))

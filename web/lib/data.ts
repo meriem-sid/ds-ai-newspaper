@@ -20,7 +20,10 @@ export type Article = {
   event_timezone: string | null;
   is_remote: boolean | null;
   event_format: string | null;
-  job_level: string | null;
+  job_level: string | null; // 'internship' | 'entry' | 'mid' | 'senior'
+  company: string | null;
+  location: string | null;
+  posted_on: string | null; // YYYY-MM-DD, when the source published it
   edition_date: string; // YYYY-MM-DD
 };
 
@@ -40,7 +43,8 @@ const ARTICLE_COLUMNS = `
   coalesce(a.tags, '{}') AS tags,
   coalesce(a.related_urls, '{}') AS related_urls,
   to_char(a.event_start AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS event_start,
-  a.event_timezone, a.is_remote, a.event_format, a.job_level,
+  a.event_timezone, a.is_remote, a.event_format, a.job_level, a.company, a.location,
+  to_char(a.published_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS posted_on,
   to_char(e.edition_date, 'YYYY-MM-DD') AS edition_date`;
 
 /** Today's date in UTC (the pipeline runs on a UTC cron). */

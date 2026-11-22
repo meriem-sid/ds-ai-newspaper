@@ -61,8 +61,10 @@ class EditedStory(BaseModel):
     event_format: str | None = Field(default=None, description="Events/hackathons only: 'online', 'hybrid', or 'in_person' if stated, else null.")
     job_level: str | None = Field(
         default=None,
-        description="Jobs only: 'internship', 'junior', 'entry', 'mid', or 'senior' as stated or clearly implied by the title, else null.",
+        description="Jobs only: 'internship', 'entry', 'mid', or 'senior' as stated or clearly implied by the title / years of experience, else null.",
     )
+    company: str | None = Field(default=None, description="Jobs only: hiring company name as stated, else null.")
+    location: str | None = Field(default=None, description="Jobs only: where the role can be done as stated (e.g. 'Remote (US)'), else null.")
 
 
 class EditorResponse(BaseModel):
@@ -87,6 +89,8 @@ class Article(BaseModel):
     is_remote: bool | None = None
     event_format: str | None = None
     job_level: str | None = None
+    company: str | None = None
+    location: str | None = None
     published_at: datetime | None = None
     bucket: Bucket = "A"
 

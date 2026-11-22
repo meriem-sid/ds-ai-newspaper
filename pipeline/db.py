@@ -73,7 +73,7 @@ class PgSeenStore:
 ARTICLE_COLUMNS = (
     "edition_id", "category", "title", "what_happened", "why_it_matters", "url", "source",
     "relevance_score", "deadline", "tags", "related_urls", "event_start", "event_timezone",
-    "is_remote", "event_format", "job_level", "published_at",
+    "is_remote", "event_format", "job_level", "company", "location", "published_at",
 )
 
 
@@ -112,7 +112,7 @@ def save_edition(conn: psycopg.Connection, edition: Edition) -> dict[str, int]:
                 (
                     edition_id, category, a.title, a.what_happened, a.why_it_matters, a.url, a.source[:100],
                     a.relevance_score, a.deadline, a.tags, a.related_urls, a.event_start, a.event_timezone,
-                    a.is_remote, a.event_format, a.job_level, a.published_at,
+                    a.is_remote, a.event_format, a.job_level, a.company, a.location, a.published_at,
                 ),
             )
             inserted += cur.rowcount

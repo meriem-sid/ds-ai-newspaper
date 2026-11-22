@@ -26,6 +26,7 @@ log = logging.getLogger("clean")
 
 TITLE_DUP_THRESHOLD = 88   # within today's batch (token_set_ratio)
 SEEN_TITLE_THRESHOLD = 92  # vs. headlines from previous days — stricter to avoid false drops
+EXACTISH_THRESHOLD = 95    # jobs/events: only near-identical titles are the same item
 SEEN_DAYS = 30
 
 _TRACKING_PARAMS = re.compile(r"^(utm_\w+|ref|ref_src|source|fbclid|gclid|mc_cid|mc_eid|s|si|cmpid)$", re.I)
@@ -96,6 +97,15 @@ def _max_age(item: RawItem) -> timedelta:
     return timedelta(days=windows.get("events_days", 7))
 
 
+def same_title(a_norm: str, b_norm: str, bucket: str) -> bool:
+    """News (bucket A): token-set matching catches reworded coverage of one story.
+    Jobs/events: token-set would merge "Senior Data Engineer at X" with "... at Y",
+    so only near-identical titles count as the same item."""
+    if bucket == "A":
+        return fuzz.token_set_ratio(a_norm, b_norm) >= TITLE_DUP_THRESHOLD
+    return fuzz.ratio(a_norm, b_norm) >= EXACTISH_THRESHOLD
+
+
 def in_window(item: RawItem, now: datetime) -> bool:
     if item.published_at is None:
         # Undated news can't be proven fresh → drop. Events/jobs often lack a
@@ -124,7 +134,7 @@ def collapse_duplicates(items: list[RawItem]) -> list[RawItem]:
         norm = normalize_title(item.title)
         match = None
         for idx, other_norm in enumerate(kept_norm):
-            if kept[idx].bucket == item.bucket and fuzz.token_set_ratio(norm, other_norm) >= TITLE_DUP_THRESHOLD and min(len(norm), len(other_norm)) > 15:
+            if kept[idx].bucket == item.bucket and same_title(norm, other_norm, item.bucket) and min(len(norm), len(other_norm)) > 15:
                 match = kept[idx]
                 break
         if match:
@@ -152,9 +162,12 @@ def clean(items: list[RawItem], seen_urls: set[str], seen_titles: list[str], now
     stats["after_collapse"] = len(fresh)
 
     if seen_titles:
+        # Headline matching across days is for news only. Jobs and events are de-duplicated by
+        # URL: two postings titled "Senior Data Engineer" at different companies are different items.
         fresh = [
             i for i in fresh
-            if not any(fuzz.token_set_ratio(normalize_title(i.title), t) >= SEEN_TITLE_THRESHOLD for t in seen_titles)
+            if i.bucket != "A"
+            or not any(fuzz.token_set_ratio(normalize_title(i.title), t) >= SEEN_TITLE_THRESHOLD for t in seen_titles)
         ]
     stats["after_seen_title"] = len(fresh)
 

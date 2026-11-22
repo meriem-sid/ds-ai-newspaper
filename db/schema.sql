@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS articles (
     event_timezone  VARCHAR(64),
     is_remote       BOOLEAN,
     event_format    VARCHAR(20),            -- 'online' | 'hybrid' | 'in_person' | 'unknown'
-    job_level       VARCHAR(20),            -- 'internship' | 'junior' | 'entry' | 'mid' | 'senior' | NULL
+    job_level       VARCHAR(20),            -- 'internship' | 'entry' | 'mid' | 'senior' | NULL
     published_at    TIMESTAMPTZ,
     search_vector   tsvector GENERATED ALWAYS AS (
         setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
@@ -39,6 +39,11 @@ CREATE TABLE IF NOT EXISTS articles (
         setweight(to_tsvector('english', coalesce(why_it_matters, '')), 'C')
     ) STORED
 );
+
+-- Added after launch (idempotent for existing databases).
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS company  TEXT;   -- jobs: hiring company
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS location TEXT;   -- jobs: "Remote (US)", "Berlin or remote", ...
+UPDATE articles SET job_level = 'entry' WHERE job_level = 'junior';
 
 CREATE INDEX IF NOT EXISTS idx_articles_edition   ON articles (edition_id);
 CREATE INDEX IF NOT EXISTS idx_articles_deadline  ON articles (deadline) WHERE deadline IS NOT NULL;

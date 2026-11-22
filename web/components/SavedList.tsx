@@ -5,6 +5,7 @@ import type { Article } from "@/lib/data";
 import { CATEGORY_LABELS } from "@/lib/format";
 import { useReaderState } from "@/lib/readerState";
 import ArticleCard from "./ArticleCard";
+import JobCard from "./JobCard";
 import { ListSkeleton } from "./PageHeader";
 import { EmptyNote, SectionHeading, StoryGrid, TONE_BY_CATEGORY } from "./Section";
 
@@ -58,7 +59,7 @@ export default function SavedList() {
           <SectionHeading title={g.label} tone={g.tone} count={g.items.length} />
           <StoryGrid>
             {g.items.map((a) => (
-              <ArticleCard key={a.id} article={a} today={today} showEditionDate />
+              a.category === "job" ? <JobCard key={a.id} job={a} today={today} /> : <ArticleCard key={a.id} article={a} today={today} showEditionDate />
             ))}
           </StoryGrid>
         </section>

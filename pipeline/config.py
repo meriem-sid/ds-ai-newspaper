@@ -30,6 +30,8 @@ class Settings:
     groq_model: str = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")  # supports strict json_schema
     groq_batch_size: int = int(os.getenv("GROQ_BATCH_SIZE", "15"))     # free tier ≈ 8K tokens/min
     groq_pause_seconds: float = float(os.getenv("GROQ_PAUSE_SECONDS", "20"))
+    # Max estimated input tokens per Groq request (free tier: 8K tokens/min incl. the reply).
+    groq_max_input_tokens: int = int(os.getenv("GROQ_MAX_INPUT_TOKENS", "4500"))
 
     @property
     def model_chain(self) -> list[str]:

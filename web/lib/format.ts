@@ -66,10 +66,19 @@ export function hostOf(url: string): string {
   }
 }
 
+/** "today", "yesterday", "3 days ago", "2 weeks ago" */
+export function postedAgo(isoDate: string, today: string): string {
+  const d = -daysUntil(isoDate, today);
+  if (d <= 0) return "today";
+  if (d === 1) return "yesterday";
+  if (d < 14) return `${d} days ago`;
+  return `${Math.round(d / 7)} weeks ago`;
+}
+
 export const CATEGORY_LABELS: Record<string, string> = {
   front_page: "Front Page",
   research: "Research & Deep Dives",
   hackathon: "Hackathons & Competitions",
-  job: "Jobs & Internships",
+  job: "Jobs",
   webinar: "Webinars & Events",
 };

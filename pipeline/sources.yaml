@@ -106,11 +106,11 @@ tavily:
         include_domains: [devpost.com, lablab.ai, cerebralvalley.ai, hackathonhub.eu] }
     - { bucket: B, category: hackathon, q: "data science machine learning competition open",
         include_domains: [drivendata.org, zindi.africa, aicrowd.com, codabench.org], time_range: month }
-    - { bucket: C, category: job, q: "remote junior machine learning engineer",
+    - { bucket: C, category: job, q: "remote machine learning engineer",
         include_domains: [jobs.ashbyhq.com, jobs.lever.co, boards.greenhouse.io, job-boards.greenhouse.io, apply.workable.com] }
-    - { bucket: C, category: job, q: "data science intern 2027 remote",
+    - { bucket: C, category: job, q: "remote data scientist OR data science intern",
         include_domains: [jobs.ashbyhq.com, jobs.lever.co, boards.greenhouse.io, job-boards.greenhouse.io, apply.workable.com] }
-    - { bucket: C, category: job, q: "entry level data engineer remote",
+    - { bucket: C, category: job, q: "remote data engineer OR MLOps engineer",
         include_domains: [jobs.ashbyhq.com, jobs.lever.co, boards.greenhouse.io, job-boards.greenhouse.io, apply.workable.com] }
     - { bucket: C, category: webinar, q: "upcoming online workshop LLM machine learning",
         include_domains: [lu.ma, luma.com, eventbrite.com] }
@@ -121,7 +121,8 @@ tavily:
 jobs:
   # A title must match `include` and must NOT match `exclude` (case-insensitive regex).
   include: '\b(data|machine learning|ML|AI|analytics|analyst|scientist|NLP|LLM|MLOps|deep learning|computer vision|python)\b'
-  exclude: '\b(senior|sr\.?|staff|principal|lead|director|head|manager|vp|architect|chief)\b'
+  # All seniority levels are kept (entry / mid / senior tabs); only executive roles are filtered out.
+  exclude: '\b(director|vp|vice president|head of|chief|cto|ceo)\b'
   remotive:
     enabled: true
     categories: [artificial-intelligence, data]   # be polite: Remotive asks for a few calls/day max

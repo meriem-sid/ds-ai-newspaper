@@ -60,7 +60,19 @@ Rules:
   - You may return stories with any score; low scores are filtered downstream.
 """
 
-JOB_LEVELS = ("internship", "junior", "entry", "mid", "senior")
+JOB_LEVELS = ("internship", "entry", "mid", "senior")
+# Normalise whatever wording the model uses onto the four stored levels.
+_LEVEL_ALIASES = {
+    "intern": "internship", "internship": "internship", "co-op": "internship", "apprentice": "internship",
+    "entry": "entry", "entry-level": "entry", "entry level": "entry", "junior": "entry", "graduate": "entry",
+    "new grad": "entry", "new-grad": "entry", "associate": "entry",
+    "mid": "mid", "mid-level": "mid", "mid level": "mid", "intermediate": "mid",
+    "senior": "senior", "sr": "senior", "lead": "senior", "staff": "senior", "principal": "senior",
+}
+
+
+def normalize_job_level(value: str | None) -> str | None:
+    return _LEVEL_ALIASES.get((value or "").strip().lower().rstrip("."))
 
 # Appended to SYSTEM_PROMPT for each editorial group (see editorial_groups()).
 GROUP_RULES = {
@@ -76,13 +88,19 @@ THIS BATCH: HACKATHONS & COMPETITIONS.
 """,
     "job": """
 THIS BATCH: JOB POSTINGS.
-  - Target: remote or remote-friendly INTERNSHIP, JUNIOR, ENTRY-LEVEL, or NEW-GRAD roles in data science,
-    machine learning, AI engineering, data engineering, or analytics.
-  - Score 3 or lower: senior/staff/lead/manager roles, roles asking 3+ years of experience, non-data roles,
-    on-site-only roles, pages that are not one specific job.
-  - Title: "<Role> at <Company>". what_happened: scope + key requirements (stack, years, location limits).
-    why_it_matters: why it fits (or stretches) an early-career candidate.
-  - job_level: internship / junior / entry / mid / senior. is_remote from the text. deadline only if an application close date is stated.
+  - Target: remote or remote-friendly roles AT ANY LEVEL (internship, entry, mid, senior) in data science,
+    machine learning, AI engineering, data engineering, MLOps, or analytics.
+  - Score by role quality and fit with the field, NOT by seniority: a clear, well-described senior ML role
+    scores as high as a good internship.
+  - Score 3 or lower: executive roles (director, VP, head of, chief), non-data roles, on-site-only roles,
+    pages that are not one specific job, postings with no real description.
+  - title: the ROLE TITLE ONLY (no company), e.g. "Machine Learning Engineer, Search".
+  - company: the hiring company's name as stated. location: where the role can be done, as stated
+    (e.g. "Remote (US)", "Remote, EMEA", "Berlin or remote"); null if not stated.
+  - job_level: internship / entry / mid / senior. Map junior/graduate/new-grad to entry; lead/staff/principal
+    to senior. Use stated title words and years of experience; null only if truly unclear.
+  - what_happened: scope + key requirements (stack, years). why_it_matters: who it suits and why.
+  - is_remote from the text. deadline only if an application close date is stated.
 """,
     "webinar": """
 THIS BATCH: WEBINARS, WORKSHOPS & LIVE EVENTS.
@@ -214,7 +232,8 @@ def _call_groq(prompt: str, schema, system: str, retries: int = 3):
     }
     headers = {"Authorization": f"Bearer {settings.groq_api_key}"}
     last_err = ""
-    for attempt in range(1, retries + 1):
+    attempt = rate_waits = 0
+    while attempt < retries:
         try:
             resp = httpx.post(GROQ_URL, json=body, headers=headers, timeout=settings.llm_timeout_seconds)
         except httpx.HTTPError as exc:
@@ -231,15 +250,34 @@ def _call_groq(prompt: str, schema, system: str, retries: int = 3):
                 raise FatalEditorError(f"Groq model '{settings.groq_model}' not found - set GROQ_MODEL in .env.")
             else:
                 last_err = f"HTTP {resp.status_code}: {resp.text[:150]}"
-                if resp.status_code == 429:  # free tier is ~8K tokens/min: honour retry-after
+                if _groq_oversize(resp):
+                    # One request bigger than the per-minute budget: waiting can't help, a smaller chunk can.
+                    raise EditorError(f"Groq request too large: {resp.text[:150]}")
+                if resp.status_code == 429 and rate_waits < 4:
+                    # Budget temporarily used up: wait as told. Doesn't count as a failed attempt.
+                    rate_waits += 1
                     wait = min(float(resp.headers.get("retry-after", 20)) + 1, 90)
                     log.warning("groq rate-limited; waiting %.0fs", wait)
                     time.sleep(wait)
                     continue
+        attempt += 1
         log.warning("groq attempt %d: %s", attempt, last_err)
         if attempt < retries:
             time.sleep(5 * attempt)
     raise EditorError(f"Groq failed after {retries} attempts: {last_err}")
+
+
+def _groq_oversize(resp: httpx.Response) -> bool:
+    """413, or a 429 whose message says the request alone exceeds the limit."""
+    if resp.status_code == 413:
+        return True
+    if resp.status_code != 429:
+        return False
+    text = resp.text
+    if "Request too large" in text:
+        return True
+    m = re.search(r"Limit (\d+),.*?Requested (\d+)", text)
+    return bool(m and int(m.group(2)) > int(m.group(1)))
 
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
@@ -292,6 +330,12 @@ def _parse_dt(value: str | None) -> str | None:
 _TYPOGRAPHY = str.maketrans({"‑": "-", "‐": "-", " ": " ", " ": " "})
 
 
+def _clean_field(value: str | None, limit: int) -> str | None:
+    """Short free-text fields (company, location): trimmed, typography-normalised, None if empty."""
+    value = (value or "").translate(_TYPOGRAPHY).strip().strip(".")
+    return value[:limit] or None if value.lower() not in ("null", "none", "n/a", "unknown", "not stated") else None
+
+
 def strip_inline_latex(text: str) -> str:
     """"$R^2$" -> "R^2", but leave prices alone ("$67,500 ... $25,000")."""
     def repl(m: re.Match) -> str:
@@ -341,18 +385,13 @@ def verify_story(story: EditedStory, batch: dict[int, RawItem], today: date) -> 
         related += s.related_urls
     category = primary.category_hint or {"A": "research", "B": "hackathon", "C": "job"}[primary.bucket]
 
-    # Opportunities must be actionable: a hackathon/webinar needs a verified date that
-    # hasn't passed; a job must not be senior.
+    # Opportunities must be actionable: a hackathon/webinar needs a verified date that hasn't passed.
     if category in ("hackathon", "webinar"):
         upcoming = (deadline and deadline >= today) or (event_start and date.fromisoformat(event_start[:10]) >= today)
         if not upcoming:
             log.info("dropping %s without a verified upcoming date: %r", category, story.title[:60])
             return None
-    job_level = (story.job_level or "").strip().lower() or None
-    job_level = job_level if job_level in JOB_LEVELS else None
-    if category == "job" and job_level in ("mid", "senior"):
-        log.info("dropping %s-level job: %r", job_level, story.title[:60])
-        return None
+    job_level = normalize_job_level(story.job_level)
     event_format = (story.event_format or "").strip().lower().replace("-", "_").replace(" ", "_") or None
     event_format = event_format if event_format in ("online", "hybrid", "in_person") else None
     # Hard rules, enforced in code so they hold whichever model is editing (the
@@ -380,6 +419,8 @@ def verify_story(story: EditedStory, batch: dict[int, RawItem], today: date) -> 
         is_remote=story.is_remote,
         event_format=event_format,
         job_level=job_level if category == "job" else None,
+        company=_clean_field(story.company, 100) if category == "job" else None,
+        location=_clean_field(story.location, 100) if category == "job" else None,
         published_at=primary.published_at,
         bucket=primary.bucket,
     )
@@ -403,19 +444,46 @@ def _batch_prompt(batch: dict[int, RawItem]) -> str:
     return "Candidate items:\n" + json.dumps(payload, ensure_ascii=False, indent=1)
 
 
+def estimate_tokens(text: str) -> int:
+    """Rough token count (~3.5 chars/token for English + JSON); errs on the high side."""
+    return int(len(text) / 3.5) + 1
+
+
+def groq_chunks(batch: dict[int, RawItem], system: str) -> list[dict[int, RawItem]]:
+    """Split a batch so each Groq request stays under the free tier's tokens-per-minute
+    budget (sized by estimated tokens, since job/event snippets vary a lot in length)."""
+    budget = settings.groq_max_input_tokens - estimate_tokens(system)
+    chunks: list[dict[int, RawItem]] = []
+    current: dict[int, RawItem] = {}
+    for k, it in batch.items():
+        candidate = {**current, k: it}
+        too_big = estimate_tokens(_batch_prompt(candidate)) > budget
+        if current and (too_big or len(current) >= settings.groq_batch_size):
+            chunks.append(current)
+            candidate = {k: it}
+        current = candidate
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+_SPLITTABLE = ("JSON", "too large")  # errors a smaller chunk can fix
+
+
 def _groq_split(chunk: dict[int, RawItem], system: str) -> list[EditedStory]:
-    """Groq sometimes can't produce schema-valid JSON for a large, messy chunk
-    ("Failed to generate/validate JSON"). Halve the chunk and retry, down to 3 items."""
+    """Groq sometimes can't produce schema-valid JSON for a large, messy chunk, or rejects a
+    request as larger than its per-minute token limit. Halve the chunk and retry, down to 1 item."""
     try:
         return _call_groq(_batch_prompt(chunk), EditorResponse, system, retries=2).stories
     except FatalEditorError:
         raise
     except EditorError as exc:
-        if "JSON" not in str(exc) or len(chunk) <= 3:
+        if not any(s in str(exc) for s in _SPLITTABLE) or len(chunk) <= 1:
             raise
         keys = list(chunk)
         half = len(keys) // 2
-        log.warning("groq JSON failure on %d items; retrying as %d + %d", len(keys), half, len(keys) - half)
+        log.warning("groq %s on %d items; retrying as %d + %d",
+                    "oversize" if "too large" in str(exc) else "JSON failure", len(keys), half, len(keys) - half)
         out: list[EditedStory] = []
         for part in (keys[:half], keys[half:]):
             time.sleep(settings.groq_pause_seconds)
@@ -446,11 +514,10 @@ def _edit_batch(client, batch: dict[int, RawItem], system: str = SYSTEM_PROMPT) 
             log.warning("%s -> switching to Groq for the rest of this run", exc)
             _gemini_down = True
 
-    ids = list(batch)
     stories: list[EditedStory] = []
     failures = 0
-    for n, i in enumerate(range(0, len(ids), settings.groq_batch_size)):
-        chunk = {k: batch[k] for k in ids[i : i + settings.groq_batch_size]}
+    chunks = groq_chunks(batch, system)
+    for n, chunk in enumerate(chunks):
         if n:
             time.sleep(settings.groq_pause_seconds)
         try:
@@ -462,7 +529,7 @@ def _edit_batch(client, batch: dict[int, RawItem], system: str = SYSTEM_PROMPT) 
             log.error("groq chunk of %d items skipped: %s", len(chunk), exc)
     if failures and not stories:
         raise EditorError(f"all {failures} Groq chunks failed")
-    log.info("groq (%s) edited %d items in %d chunks", settings.groq_model, len(ids), n + 1)
+    log.info("groq (%s) edited %d items in %d chunks", settings.groq_model, len(batch), len(chunks))
     return stories
 
 
@@ -544,11 +611,26 @@ def cap_papers(articles: list[Article]) -> tuple[list[Article], int]:
     return [a for a in articles if id(a) not in dropped], len(dropped)
 
 
+def _identity(a: Article) -> str:
+    # A job's title is the role alone ("Senior Data Engineer"), so the company is part of its identity.
+    return f"{a.title} @ {a.company}".lower() if a.category == "job" else a.title.lower()
+
+
+def _same_story(a: Article, b: Article) -> bool:
+    if a.url == b.url:
+        return True
+    if a.bucket != b.bucket:
+        return False
+    if a.bucket == "A":  # news: reworded headlines of one story
+        return fuzz.token_set_ratio(_identity(a), _identity(b)) >= 90
+    return fuzz.ratio(_identity(a), _identity(b)) >= 95  # jobs/events: near-identical only
+
+
 def _dedupe_articles(articles: list[Article]) -> list[Article]:
-    """Cross-batch safety net: same URL or near-identical headline → keep higher score."""
+    """Cross-batch safety net: same URL or the same story twice → keep the higher score."""
     out: list[Article] = []
     for art in sorted(articles, key=lambda a: -a.relevance_score):
-        if any(a.url == art.url or fuzz.token_set_ratio(a.title.lower(), art.title.lower()) >= 90 for a in out):
+        if any(_same_story(a, art) for a in out):
             continue
         out.append(art)
     return out

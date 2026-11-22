@@ -49,7 +49,7 @@ export default async function EditionView({ date }: { date?: string }) {
         )}
       </Section>
 
-      <Section id="jobs" tone="job" title="Jobs & Internships" count={by("job").length}>
+      <Section id="jobs" tone="job" title="Jobs" count={by("job").length}>
         {by("job").length ? <JobsSection jobs={by("job")} today={today} /> : <EmptyNote>No new matching roles in this edition.</EmptyNote>}
       </Section>
 

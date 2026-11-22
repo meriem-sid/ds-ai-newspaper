@@ -139,7 +139,7 @@ function Badge({ children }: { children: React.ReactNode }) {
   return <span className="rounded-full bg-chip px-2 py-0.5 text-[0.72rem] font-medium capitalize text-ink/80">{children}</span>;
 }
 
-function IconButton({
+export function IconButton({
   label,
   pressed,
   onClick,
