@@ -67,7 +67,7 @@ Open http://localhost:3000.
 
 ### 4. Deploy
 
-**Web app on Vercel:** *Add New → Project* → import the repository → set **Root Directory** to `web` → add the environment variables `DATABASE_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, `PUBLIC_SITE_URL` (your site's URL, used in confirmation links), `RATE_LIMIT_SALT` (any long random string; it anonymises visitors on the games leaderboard) and, optionally, `SITE_PASSWORD` (the site then asks for this password; any username works) → *Deploy*.
+**Web app on Vercel:** *Add New → Project* → import the repository → set **Root Directory** to `web` → add the environment variables `DATABASE_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, `PUBLIC_SITE_URL` (your site's URL, used in confirmation links) and `RATE_LIMIT_SALT` (any long random string; it anonymises visitors on the games leaderboard) → *Deploy*.
 
 **Daily run on GitHub Actions:** in the repository, go to *Settings → Secrets and variables → Actions*.
 - On the **Secrets** tab, add: `GEMINI_API_KEY`, `GROQ_API_KEY`, `DATABASE_URL`, `TAVILY_API_KEY`, `KAGGLE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `RESEND_API_KEY`.
