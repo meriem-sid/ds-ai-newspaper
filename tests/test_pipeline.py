@@ -119,7 +119,7 @@ def test_known_deadline_from_api_wins():
 
 
 def test_front_page_gets_three_to_five():
-    batch = {i: item(f"Story {i}", f"https://a.com/{i}") for i in range(8)}
+    batch = {i: item(f"Story {i}", f"https://a.com/{i}", source=f"Source {i}") for i in range(8)}
     arts = [verify_story(story(source_ids=[i], primary_id=i, relevance_score=s), batch, TODAY)
             for i, s in enumerate([10, 9, 9, 9, 9, 9, 8, 7])]
     assign_front_page(arts)
@@ -303,3 +303,58 @@ def test_groq_oversize_detection():
     assert editor._groq_oversize(mk(429, "on tokens per minute (TPM): Limit 8000, Requested 9123, please reduce"))
     assert not editor._groq_oversize(mk(429, "on tokens per minute (TPM): Limit 8000, Used 6000, Requested 3000."))
     assert not editor._groq_oversize(mk(500, "server error"))
+
+
+# ── Source diversity & resources ─────────────────────────────────────────────
+
+def test_front_page_takes_one_story_per_source():
+    batch = {i: item(f"Story {i}", f"https://a.com/{i}", source="NVIDIA Tech Blog" if i < 3 else f"S{i}") for i in range(5)}
+    arts = [verify_story(story(source_ids=[i], primary_id=i, relevance_score=s), batch, TODAY)
+            for i, s in enumerate([10, 10, 10, 8, 8])]
+    assign_front_page(arts)
+    front = [a for a in arts if a.category == "front_page"]
+    assert len(front) == 3 and len({a.source for a in front}) == 3
+
+
+def test_cap_per_source_keeps_best_two_and_exempts_jobs_papers():
+    batch = {i: item(f"N{i}", f"https://n.com/{i}", source="NVIDIA Tech Blog") for i in range(4)}
+    news = [verify_story(story(source_ids=[i], primary_id=i, relevance_score=7 + (i == 3)), batch, TODAY) for i in range(4)]
+    jb = {i: item(f"J{i}", f"https://j.com/{i}", bucket="C", category_hint="job", source="Greenhouse") for i in range(3)}
+    jobs = [verify_story(story(source_ids=[i], primary_id=i, company=f"C{i}"), jb, TODAY) for i in range(3)]
+    pb = {i: item(f"P{i}", f"https://arxiv.org/abs/{i}", source="arXiv") for i in range(3)}
+    papers = [verify_story(story(source_ids=[i], primary_id=i), pb, TODAY) for i in range(3)]
+    kept, dropped = editor.cap_per_source(news + jobs + papers)
+    assert dropped == 2
+    kept_news = [a for a in kept if a.source == "NVIDIA Tech Blog"]
+    assert len(kept_news) == 2 and max(a.relevance_score for a in kept_news) == 8   # the best one survives
+    assert sum(a.category == "job" for a in kept) == 3 and sum(a.source == "arXiv" for a in kept) == 3
+
+
+def test_resources_get_their_own_batch_and_category():
+    items = [item("NVIDIA ships X", "https://nvidia.com/x", source="NVIDIA Tech Blog"),
+             item("owner/repo", "https://github.com/owner/repo", source="GitHub", category_hint="resource"),
+             item("Paper", "https://arxiv.org/abs/1", source="arXiv")]
+    groups = dict(editor.editorial_groups(items))
+    assert [i.source for i in groups["resources"]] == ["GitHub"]
+    assert [i.source for i in groups["news"]] == ["NVIDIA Tech Blog"]
+    art = verify_story(story(source_ids=[0], primary_id=0), {0: items[1]}, TODAY)
+    assert art.category == "resource"
+
+
+def test_readme_intro_strips_markup():
+    from pipeline.ingest import readme_intro
+    md = "---\nlicense: mit\ntags: [x]\n---\n# Model\n![badge](https://img)\n<p align=center>hi</p>\nA **7B** [vision](https://x) model.\n"
+    assert readme_intro(md) == "Model hi A 7B vision model."
+
+
+def test_resources_only_reach_front_page_when_exceptional():
+    batch = {0: item("owner/tool", "https://github.com/o/t", source="GitHub", category_hint="resource"),
+             1: item("model", "https://huggingface.co/m", source="HF Models", category_hint="resource"),
+             2: item("News A", "https://a.com/1", source="A"),
+             3: item("News B", "https://b.com/1", source="B")}
+    arts = [verify_story(story(source_ids=[i], primary_id=i, relevance_score=s), batch, TODAY) for i, s in enumerate([8, 9, 7, 7])]
+    assign_front_page(arts)
+    cats = {a.source: a.category for a in arts}
+    assert cats["GitHub"] == "resource"          # 8: stays in Tools & Resources
+    assert cats["HF Models"] == "front_page"     # 9: exceptional enough to lead
+    assert cats["A"] == cats["B"] == "front_page"

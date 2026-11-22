@@ -418,6 +418,180 @@ def fetch_job_feeds(client: httpx.Client) -> list[RawItem]:
     return items
 
 
+# ── Tools & Resources: HF models/datasets, new GitHub repos, Kaggle datasets ──
+
+
+def _resources_cfg() -> dict:
+    return SOURCES.get("resources") or {}
+
+
+def _resource_window() -> int:
+    return int(_resources_cfg().get("window_days", 21)) * 24
+
+
+_FRONTMATTER = re.compile(r"^---.*?---", re.DOTALL)
+_MD_NOISE = re.compile(r"!\[[^\]]*\]\([^)]*\)|<[^>]+>|\[([^\]]*)\]\([^)]*\)|[#*`>|]+")
+
+
+def readme_intro(markdown: str, limit: int = 600) -> str:
+    """First prose of a model card: drop YAML front-matter, images, HTML, link targets, markup."""
+    text = _FRONTMATTER.sub("", markdown, count=1)
+    text = _MD_NOISE.sub(lambda m: m.group(1) or " ", text)
+    return clean_text(text, limit)
+
+
+def fetch_hf_models(client: httpx.Client) -> list[RawItem]:
+    cfg = _resources_cfg().get("hf_models") or {}
+    if not cfg.get("enabled"):
+        return []
+    items: list[RawItem] = []
+    skip = re.compile(cfg.get("skip_pattern", r"^$"), re.IGNORECASE)
+    try:
+        resp = client.get("https://huggingface.co/api/models", params={"sort": "trendingScore", "limit": cfg.get("limit", 30)})
+        resp.raise_for_status()
+        models = [m for m in resp.json() if int(m.get("likes") or 0) >= cfg.get("min_likes", 0) and not skip.search(m.get("id", ""))]
+        for rank, m in enumerate(models):
+            readme = ""
+            if rank < cfg.get("readme_top", 10):
+                try:
+                    r = client.get(f"https://huggingface.co/{m['id']}/raw/main/README.md", timeout=10)
+                    if r.status_code == 200:
+                        readme = readme_intro(r.text)
+                except httpx.HTTPError:
+                    pass  # gated or slow card: the tags below still describe it
+            tags = [t for t in (m.get("tags") or []) if ":" not in t][:8]
+            facts = (
+                f"Open model on Hugging Face: {m.get('pipeline_tag') or 'model'}"
+                + (f", library {m['library_name']}" if m.get("library_name") else "")
+                + f". {m.get('likes', 0)} likes, {m.get('downloads', 0)} downloads this month."
+                + (f" Tags: {', '.join(tags)}." if tags else "")
+            )
+            _make(
+                items,
+                title=m["id"],
+                url=f"https://huggingface.co/{m['id']}",
+                source="HF Models",
+                published_at=_parse_iso(m.get("createdAt")),
+                raw_snippet=f"{facts} {readme}".strip(),
+                bucket="A",
+                category_hint="resource",
+                signal=int(m.get("likes") or 0),
+                max_age_hours=_resource_window(),
+            )
+        log.info("hf trending models        %3d items", len(items))
+    except Exception as exc:  # noqa: BLE001
+        log.warning("hf trending models FAILED: %s", exc)
+    return items
+
+
+def fetch_hf_datasets(client: httpx.Client) -> list[RawItem]:
+    cfg = _resources_cfg().get("hf_datasets") or {}
+    if not cfg.get("enabled"):
+        return []
+    items: list[RawItem] = []
+    try:
+        resp = client.get("https://huggingface.co/api/datasets", params={"sort": "trendingScore", "limit": cfg.get("limit", 20)})
+        resp.raise_for_status()
+        for d in resp.json():
+            if int(d.get("likes") or 0) < cfg.get("min_likes", 0):
+                continue
+            _make(
+                items,
+                title=d["id"],
+                url=f"https://huggingface.co/datasets/{d['id']}",
+                source="HF Datasets",
+                published_at=_parse_iso(d.get("createdAt")),
+                raw_snippet=f"Dataset on Hugging Face. {d.get('likes', 0)} likes, {d.get('downloads', 0)} downloads. "
+                + readme_intro(d.get("description") or "", 600),
+                bucket="A",
+                category_hint="resource",
+                signal=int(d.get("likes") or 0),
+                max_age_hours=_resource_window(),
+            )
+        log.info("hf trending datasets      %3d items", len(items))
+    except Exception as exc:  # noqa: BLE001
+        log.warning("hf trending datasets FAILED: %s", exc)
+    return items
+
+
+def fetch_github_repos(client: httpx.Client) -> list[RawItem]:
+    cfg = _resources_cfg().get("github") or {}
+    if not cfg.get("enabled"):
+        return []
+    items: list[RawItem] = []
+    seen: set[str] = set()
+    since = (datetime.now(timezone.utc) - timedelta(days=cfg.get("created_within_days", 14))).date().isoformat()
+    headers = {"Accept": "application/vnd.github+json"}
+    if os.getenv("GITHUB_TOKEN"):
+        headers["Authorization"] = f"Bearer {os.environ['GITHUB_TOKEN']}"
+    for topic in cfg.get("topics", []):
+        try:
+            resp = client.get(
+                "https://api.github.com/search/repositories",
+                params={"q": f"topic:{topic} created:>{since} stars:>={cfg.get('min_stars', 50)}", "sort": "stars",
+                        "order": "desc", "per_page": cfg.get("per_topic", 8)},
+                headers=headers,
+            )
+            resp.raise_for_status()
+            for r in resp.json().get("items", []):
+                if r["full_name"] in seen or r.get("fork") or r.get("archived") or not r.get("description"):
+                    continue
+                seen.add(r["full_name"])
+                _make(
+                    items,
+                    title=r["full_name"],
+                    url=r["html_url"],
+                    source="GitHub",
+                    published_at=_parse_iso(r.get("created_at")),
+                    raw_snippet=(
+                        f"New open-source repository ({r.get('language') or 'language not stated'}), "
+                        f"{r.get('stargazers_count', 0)} stars since {r.get('created_at', '')[:10]}. "
+                        f"Topics: {', '.join((r.get('topics') or [])[:8])}. {clean_text(r.get('description'), 400)}"
+                    ),
+                    bucket="A",
+                    category_hint="resource",
+                    signal=int(r.get("stargazers_count") or 0),
+                    max_age_hours=_resource_window(),
+                )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("github topic:%s FAILED: %s", topic, exc)
+    log.info("github new repos          %3d items", len(items))
+    return items
+
+
+def fetch_kaggle_datasets(client: httpx.Client) -> list[RawItem]:
+    cfg = _resources_cfg().get("kaggle_datasets") or {}
+    auth = _kaggle_auth()
+    if not cfg.get("enabled") or not auth:
+        return []
+    items: list[RawItem] = []
+    try:
+        resp = client.get("https://www.kaggle.com/api/v1/datasets/list", params={"sortBy": "hottest", "page": 1}, **auth)
+        resp.raise_for_status()
+        for d in resp.json()[: cfg.get("limit", 15)]:
+            _make(
+                items,
+                title=clean_text(d.get("title"), 200),
+                url=d.get("url") or f"https://www.kaggle.com/datasets/{d.get('ref')}",
+                source="Kaggle Datasets",
+                published_at=_parse_iso(d.get("lastUpdated")),
+                raw_snippet=(
+                    f"Kaggle dataset by {d.get('creatorName') or d.get('ownerName') or 'a Kaggle user'}. "
+                    f"{d.get('voteCount', 0)} votes, {d.get('downloadCount', 0)} downloads, "
+                    f"usability {float(d.get('usabilityRating') or 0):.1f}/1. "
+                    f"{clean_text(d.get('subtitle'), 200)} {clean_text(d.get('description'), 400)}"
+                ),
+                bucket="A",
+                category_hint="resource",
+                signal=int(d.get("voteCount") or 0),
+                max_age_hours=_resource_window(),
+            )
+        log.info("kaggle datasets           %3d items", len(items))
+    except Exception as exc:  # noqa: BLE001
+        log.warning("kaggle datasets FAILED: %s", exc)
+    return items
+
+
 # ── Entry point ─────────────────────────────────────────────────────────────
 
 FETCHERS = {
@@ -429,6 +603,10 @@ FETCHERS = {
     "tavily": fetch_tavily,
     "remotive": fetch_remotive,
     "job_feeds": fetch_job_feeds,
+    "hf_models": fetch_hf_models,
+    "hf_datasets": fetch_hf_datasets,
+    "github": fetch_github_repos,
+    "kaggle_datasets": fetch_kaggle_datasets,
 }
 
 

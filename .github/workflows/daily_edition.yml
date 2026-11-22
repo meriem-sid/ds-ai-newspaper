@@ -38,6 +38,8 @@ jobs:
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      # Built into every Actions run (no setup): raises the GitHub search API rate limit for the repo fetcher.
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Non-secret settings: same page → "Variables" (all optional)
       WEB_APP_URL: ${{ vars.WEB_APP_URL }}
       NOTIFY_EMAIL_TO: ${{ vars.NOTIFY_EMAIL_TO }}

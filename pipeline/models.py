@@ -7,7 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, HttpUrl
 
 Bucket = Literal["A", "B", "C"]
-Category = Literal["front_page", "research", "hackathon", "job", "webinar"]
+Category = Literal["front_page", "research", "resource", "hackathon", "job", "webinar"]
 
 
 class RawItem(BaseModel):

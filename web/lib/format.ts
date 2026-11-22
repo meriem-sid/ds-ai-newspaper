@@ -78,6 +78,7 @@ export function postedAgo(isoDate: string, today: string): string {
 export const CATEGORY_LABELS: Record<string, string> = {
   front_page: "Front Page",
   research: "Research & Deep Dives",
+  resource: "Tools & Resources",
   hackathon: "Hackathons & Competitions",
   job: "Jobs",
   webinar: "Webinars & Events",

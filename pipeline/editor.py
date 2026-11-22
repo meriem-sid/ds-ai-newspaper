@@ -102,6 +102,19 @@ THIS BATCH: JOB POSTINGS.
   - what_happened: scope + key requirements (stack, years). why_it_matters: who it suits and why.
   - is_remote from the text. deadline only if an application close date is stated.
 """,
+    "resources": """
+THIS BATCH: TOOLS & RESOURCES — open-source repositories, models, datasets, benchmarks.
+  - Keep things a data scientist / ML engineer can USE now: libraries and tools, open models with
+    usable weights, quality datasets, benchmarks/evals, practical learning material.
+  - Judge substance, not popularity: star or like counts can be inflated. A clear description of what it
+    does, who made it, and a real use case matter more.
+  - Score 3 or lower: promotional or vague repos, crypto/trading bots, "awesome" link dumps without curation,
+    personal configs, competition data dumps useful only inside one Kaggle contest, NSFW, duplicates of a
+    model already in the batch.
+  - title: "<name>: <what it is in a few words>", e.g. "Inkling-2-Mini: open 7B vision-language model".
+  - what_happened: what it is + who released it + one concrete capability or spec from the input.
+    why_it_matters: the practical use for this reader. Never invent benchmarks, sizes or licences.
+""",
     "webinar": """
 THIS BATCH: WEBINARS, WORKSHOPS & LIVE EVENTS.
   - Keep only a SPECIFIC, UPCOMING, ONLINE (or hybrid with online access) TECHNICAL event about data/ML/AI
@@ -573,6 +586,7 @@ def edit_items(items: list[RawItem], today: date | None = None) -> tuple[list[Ar
         raise FatalEditorError(f"every LLM batch failed ({stats['llm_calls']}); not publishing an empty edition")
     articles = _dedupe_articles(articles)
     articles, stats["papers_capped"] = cap_papers(articles)
+    articles, stats["source_capped"] = cap_per_source(articles)
     return articles, stats
 
 
@@ -591,13 +605,35 @@ def editorial_groups(items: list[RawItem]) -> list[tuple[str, list[RawItem]]]:
         return i.category_hint or {"B": "hackathon", "C": "job"}.get(i.bucket, "research")
 
     groups = [
-        ("news", [i for i in items if i.bucket == "A" and not is_paper(i.source)]),
+        ("news", [i for i in items if i.bucket == "A" and not is_paper(i.source) and i.category_hint != "resource"]),
         ("papers", [i for i in items if i.bucket == "A" and is_paper(i.source)]),
+        ("resources", [i for i in items if i.bucket == "A" and i.category_hint == "resource"]),
         ("hackathon", [i for i in items if i.bucket != "A" and cat(i) == "hackathon"]),
         ("job", [i for i in items if i.bucket != "A" and cat(i) == "job"]),
         ("webinar", [i for i in items if i.bucket != "A" and cat(i) == "webinar"]),
     ]
     return [(b, g) for b, g in groups if g]
+
+
+def cap_per_source(articles: list[Article]) -> tuple[list[Article], int]:
+    """Diversity: at most `max_per_source` stories from any one source (highest relevance kept).
+    Papers have their own cap; jobs and hackathons are separate opportunities, so exempt."""
+    cfg = _editorial_cfg()
+    limit = int(cfg.get("max_per_source", 2))
+    exempt = set(cfg.get("cap_exempt_categories", ["job", "hackathon"]))
+    kept: list[Article] = []
+    per_source: dict[str, int] = {}
+    dropped = 0
+    for a in sorted(articles, key=lambda a: -a.relevance_score):
+        if a.category in exempt or is_paper(a.source):
+            kept.append(a)
+            continue
+        if per_source.get(a.source, 0) >= limit:
+            dropped += 1
+            continue
+        per_source[a.source] = per_source.get(a.source, 0) + 1
+        kept.append(a)
+    return kept, dropped
 
 
 def cap_papers(articles: list[Article]) -> tuple[list[Article], int]:
@@ -637,11 +673,20 @@ def _dedupe_articles(articles: list[Article]) -> list[Article]:
 
 
 def assign_front_page(articles: list[Article], min_n: int = 3, max_n: int = 5) -> list[Article]:
-    """Promote the strongest Bucket A stories to the front page (3–5 heroes)."""
-    news = sorted((a for a in articles if a.bucket == "A"), key=lambda a: -a.relevance_score)
-    heroes = [a for a in news if a.relevance_score >= 9][:max_n]
+    """Promote the strongest Bucket A stories to the front page (3–5 heroes), at most one per source.
+    Tools & resources only make the front page when exceptional (score 9+); otherwise they stay in
+    their own section, so a quiet news day doesn't fill the front page with repos and model uploads."""
+    news = sorted(
+        (a for a in articles if a.bucket == "A" and (a.category != "resource" or a.relevance_score >= 9)),
+        key=lambda a: -a.relevance_score,
+    )
+    distinct: list[Article] = []
+    for a in news:
+        if all(h.source != a.source for h in distinct):
+            distinct.append(a)
+    heroes = [a for a in distinct if a.relevance_score >= 9][:max_n]
     if len(heroes) < min_n:
-        heroes = news[:min_n]
+        heroes = distinct[:min_n]
     for a in heroes:
         a.category = "front_page"
     return articles

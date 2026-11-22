@@ -63,8 +63,8 @@ def build_digest(edition: Edition, deadlines: list[Article], web_url: str | None
             when = "today" if left == 0 else "tomorrow" if left == 1 else f"in {left} days"
             lines.append(f"• {_link(a.url, a.title)} — <b>{when}</b> ({date.fromisoformat(a.deadline).strftime('%d %b')})")
 
-    counts = {c: sum(a.category == c for a in edition.articles) for c in ("research", "hackathon", "job", "webinar")}
-    labels = {"research": ("research", "research"), "hackathon": ("hackathon", "hackathons"),
+    counts = {c: sum(a.category == c for a in edition.articles) for c in ("research", "resource", "hackathon", "job", "webinar")}
+    labels = {"research": ("research", "research"), "resource": ("tool", "tools"), "hackathon": ("hackathon", "hackathons"),
               "job": ("job", "jobs"), "webinar": ("event", "events")}
     also = " · ".join(f"{n} {labels[c][n != 1]}" for c, n in counts.items() if n)
     if also:

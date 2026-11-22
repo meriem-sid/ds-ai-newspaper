@@ -2,7 +2,7 @@ import "server-only";
 import { connection } from "next/server";
 import { sql } from "./db";
 
-export type Category = "front_page" | "research" | "hackathon" | "job" | "webinar";
+export type Category = "front_page" | "research" | "resource" | "hackathon" | "job" | "webinar";
 
 export type Article = {
   id: number;
@@ -103,7 +103,7 @@ export async function getArticlesByIds(ids: number[]): Promise<Article[]> {
   );
 }
 
-export const ARCHIVE_CATEGORIES: Category[] = ["front_page", "research", "hackathon", "job", "webinar"];
+export const ARCHIVE_CATEGORIES: Category[] = ["front_page", "research", "resource", "hackathon", "job", "webinar"];
 
 /** Full-text search over every edition (title > what happened > why it matters). */
 export async function searchArchive(q: string, category?: string): Promise<Article[]> {

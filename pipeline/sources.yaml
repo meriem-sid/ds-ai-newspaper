@@ -10,6 +10,34 @@ editorial:
   # at most this many survive per edition — highest relevance first.
   max_papers: 8
   paper_sources: [arXiv, HF Daily Papers]
+  # Diversity: at most this many stories from any one source per edition (highest score wins).
+  # Papers have their own cap above; jobs and hackathons are distinct opportunities, so they're exempt.
+  max_per_source: 2
+  cap_exempt_categories: [job, hackathon]
+
+# ── Tools & Resources: open-source tools, models, datasets, benchmarks ───────
+resources:
+  window_days: 21          # a trending model/repo created up to 3 weeks ago is still news; seen-dedup stops repeats
+  hf_models:
+    enabled: true
+    limit: 30              # trending list size
+    readme_top: 10         # fetch the README intro for the top N (the list API has no descriptions)
+    min_likes: 20
+    # Skip quantised / format re-uploads of the same model
+    skip_pattern: '(gguf|awq|gptq|exl2|mlx|fp8|int4|int8|bnb|4bit|8bit|quant)'
+  hf_datasets:
+    enabled: true
+    limit: 20
+    min_likes: 10
+  github:
+    enabled: true          # uses GITHUB_TOKEN when set (Actions provides one); 3–4 searches/day work without it
+    topics: [llm, machine-learning, data-engineering, mlops]
+    created_within_days: 14
+    min_stars: 50
+    per_topic: 8
+  kaggle_datasets:
+    enabled: true
+    limit: 15
 
 # ── Bucket A: Research, Models & Industry News ─────────────────────────────
 arxiv:
@@ -83,6 +111,18 @@ rss:
   - { name: AWS ML Blog,        url: "https://aws.amazon.com/blogs/machine-learning/feed/" }
   - { name: Data Eng Weekly,    url: "https://www.dataengineeringweekly.com/feed" }
   - { name: Latent Space,       url: "https://www.latent.space/feed" }
+  # Practitioner & engineering blogs (probed 2026-11: all active in the last 30 days)
+  - { name: Eugene Yan,         url: "https://eugeneyan.com/rss/" }
+  - { name: Hamel Husain,       url: "https://hamel.dev/index.xml" }
+  - { name: Interconnects,      url: "https://www.interconnects.ai/feed" }
+  - { name: MIT Tech Review AI, url: "https://www.technologyreview.com/topic/artificial-intelligence/feed" }
+  - { name: NVIDIA Tech Blog,   url: "https://developer.nvidia.com/blog/feed" }
+  - { name: Databricks Blog,    url: "https://www.databricks.com/feed" }
+  - { name: KDnuggets,          url: "https://www.kdnuggets.com/feed" }
+  - { name: Mozilla.ai,         url: "https://blog.mozilla.ai/rss/" }
+  - { name: Apple ML Research,  url: "https://machinelearning.apple.com/rss.xml" }
+  - { name: Meta Engineering,   url: "https://engineering.fb.com/feed/" }
+  - { name: Netflix Tech Blog,  url: "https://netflixtechblog.com/feed" }
   # Anthropic and Meta AI publish no official RSS feed. Their announcements
   # still arrive via Hacker News, Simon Willison, and Import AI; Phase 2 can
   # add a Tavily query for their newsrooms if coverage looks thin.

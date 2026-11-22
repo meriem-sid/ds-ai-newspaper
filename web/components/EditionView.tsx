@@ -37,6 +37,16 @@ export default async function EditionView({ date }: { date?: string }) {
         )}
       </Section>
 
+      {by("resource").length > 0 && (
+        <Section id="resources" tone="resource" title="Tools & Resources" count={by("resource").length}>
+          <StoryGrid>
+            {by("resource").map((a) => (
+              <ArticleCard key={a.id} article={a} today={today} />
+            ))}
+          </StoryGrid>
+        </Section>
+      )}
+
       <Section id="hackathons" tone="hackathon" title="Hackathons & Competitions" count={hackathons.length}>
         {hackathons.length ? (
           <StoryGrid>
