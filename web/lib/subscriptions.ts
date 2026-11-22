@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { sql } from "./db";
 
 export const SIGNUPS_PER_HOUR_PER_VISITOR = 5;
-export const RESEND_CONFIRM_AFTER_MINUTES = 10;
+export const CONFIRM_RESEND_AFTER_MINUTES = 10;
 export const CONFIRM_LINK_DAYS = 7;
 
 const token = () => randomBytes(32).toString("hex"); // 64 hex chars, unguessable
@@ -34,7 +34,7 @@ export type SignupResult = { send: false } | { send: true; verifyToken: string }
 export async function requestSignup(email: string, ipHash: string): Promise<SignupResult> {
   const db = sql();
   const [existing] = await db<{ status: string; recent: boolean }[]>`
-    SELECT status, confirm_sent_at > NOW() - make_interval(mins => ${RESEND_CONFIRM_AFTER_MINUTES}) AS recent
+    SELECT status, confirm_sent_at > NOW() - make_interval(mins => ${CONFIRM_RESEND_AFTER_MINUTES}) AS recent
     FROM subscribers WHERE email = ${email}`;
   if (existing?.status === "active" || existing?.recent) return { send: false };
 

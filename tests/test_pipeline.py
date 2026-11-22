@@ -377,25 +377,36 @@ def test_briefing_is_scannable_escaped_and_has_unsubscribe(monkeypatch):
     assert notify.UNSUB_PLACEHOLDER in html_body and notify.UNSUB_PLACEHOLDER in text
 
 
-def test_send_briefings_personalises_unsubscribe_and_uses_idempotency(monkeypatch):
-    import httpx as _h
+def test_send_briefings_azure_one_message_each_with_unsubscribe_and_stable_ids(monkeypatch):
     monkeypatch.setenv("WEB_APP_URL", "https://news.example.app")
-    monkeypatch.setenv("EMAIL_FROM", "Daily <b@example.com>")
-    monkeypatch.setenv("RESEND_API_KEY", "re_test")
+    monkeypatch.setenv("AZURE_EMAIL_SENDER", "DoNotReply@example.azurecomm.net")
+    monkeypatch.setenv("EMAIL_SEND_INTERVAL_SECONDS", "0")
     calls = []
-    def fake_post(url, headers=None, json=None, timeout=None):
-        calls.append((url, headers, json))
-        return _h.Response(200, json={"data": [{"id": str(i)} for i in range(len(json))]})
-    monkeypatch.setattr(notify.httpx, "post", fake_post)
+
+    class FakePoller:
+        def __init__(self, status): self.status = status
+        def result(self, timeout=None): return {"id": "x", "status": self.status}
+
+    class FakeClient:
+        def begin_send(self, message, operation_id=None):
+            calls.append((message, operation_id))
+            if message["recipients"]["to"][0]["address"] == "bad@x.com":
+                raise RuntimeError("invalid recipient")
+            return FakePoller("Failed" if message["recipients"]["to"][0]["address"] == "fail@x.com" else "Succeeded")
+
+    monkeypatch.setattr(notify, "_azure_client", lambda: FakeClient())
     today = datetime.now(timezone.utc).date().isoformat()
     ed = Edition(edition_date=today, summary_headline="H", articles=[_art("front_page", "Lead")])
-    recipients = [(i, f"u{i}@x.com", f"{i:064x}") for i in range(1, 151)]          # 150 → batches of 100 + 50
+    recipients = [(1, "u1@x.com", f"{1:064x}"), (2, "bad@x.com", f"{2:064x}"), (3, "fail@x.com", f"{3:064x}"), (4, "u4@x.com", f"{4:064x}")]
     sent = notify.send_briefings(recipients, ed, [], 3)
-    assert sent == list(range(1, 151)) and len(calls) == 2
-    url, headers, payload = calls[0]
-    assert url.endswith("/emails/batch") and len(payload) == 100 and headers["Idempotency-Key"].startswith(f"briefing-{today}-1-100")
-    first = payload[0]
+    assert sent == [1, 4]                                    # a failure doesn't stop the others
+    assert len(calls) == 4                                   # one message per subscriber
+    first, op_id = calls[0]
     tok = f"{1:064x}"
-    assert first["to"] == ["u1@x.com"] and f"/unsubscribe?token={tok}" in first["html"] and notify.UNSUB_PLACEHOLDER not in first["text"]
+    assert first["senderAddress"] == "DoNotReply@example.azurecomm.net" and first["recipients"]["to"] == [{"address": "u1@x.com"}]
+    assert f"/unsubscribe?token={tok}" in first["content"]["html"] and notify.UNSUB_PLACEHOLDER not in first["content"]["plainText"]
     assert first["headers"]["List-Unsubscribe"] == f"<https://news.example.app/api/unsubscribe?token={tok}>"
     assert first["headers"]["List-Unsubscribe-Post"] == "List-Unsubscribe=One-Click"
+    assert first["userEngagementTrackingDisabled"] is True
+    # Same edition + subscriber -> same operation id (Azure dedupes a retried send); a different subscriber differs.
+    assert op_id == notify.briefing_operation_id(today, 1) != notify.briefing_operation_id(today, 4)

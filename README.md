@@ -19,7 +19,7 @@ The result is published as a newspaper-style web edition with a front page, an u
 | `DATABASE_URL` | [neon.tech](https://neon.tech) → new project → *Connect* → pooled connection string |
 | `TAVILY_API_KEY` | [app.tavily.com](https://app.tavily.com) |
 | `KAGGLE_KEY` | kaggle.com → *Settings* → *API* → *Create New Token* |
-| `RESEND_API_KEY` (email briefing) | [resend.com/api-keys](https://resend.com/api-keys) — also verify a domain you own under *Domains* |
+| `AZURE_COMMUNICATION_CONNECTION_STRING`, `AZURE_EMAIL_SENDER` (email briefing) | Azure portal: create a *Communication Services* resource and an *Email Communication Services* resource, add a domain (your own for real subscribers; the free Azure-managed one is for testing), connect it, then copy the connection string from *Settings → Keys* and the domain's MailFrom address |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Message `@BotFather` → `/newbot` for the token. Send your bot a message, then open `https://api.telegram.org/bot<TOKEN>/getUpdates` and copy `"chat": {"id": …}` |
 
 ### 2. Set up the pipeline (Python 3.12+)
@@ -67,11 +67,11 @@ Open http://localhost:3000.
 
 ### 4. Deploy
 
-**Web app on Vercel:** *Add New → Project* → import the repository → set **Root Directory** to `web` → add the environment variables `DATABASE_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, `PUBLIC_SITE_URL` (your site's URL, used in confirmation links) and `RATE_LIMIT_SALT` (any long random string; it anonymises visitors on the games leaderboard) → *Deploy*.
+**Web app on Vercel:** *Add New → Project* → import the repository → set **Root Directory** to `web` → add the environment variables `DATABASE_URL`, `AZURE_COMMUNICATION_CONNECTION_STRING`, `AZURE_EMAIL_SENDER`, `PUBLIC_SITE_URL` (your site's URL, used in confirmation links) and `RATE_LIMIT_SALT` (any long random string; it anonymises visitors on the games leaderboard) → *Deploy*.
 
 **Daily run on GitHub Actions:** in the repository, go to *Settings → Secrets and variables → Actions*.
-- On the **Secrets** tab, add: `GEMINI_API_KEY`, `GROQ_API_KEY`, `DATABASE_URL`, `TAVILY_API_KEY`, `KAGGLE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `RESEND_API_KEY`.
-- On the **Variables** tab, add `WEB_APP_URL` with your site's URL and `EMAIL_FROM` (an address on a domain verified in Resend).
+- On the **Secrets** tab, add: `GEMINI_API_KEY`, `GROQ_API_KEY`, `DATABASE_URL`, `TAVILY_API_KEY`, `KAGGLE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `AZURE_COMMUNICATION_CONNECTION_STRING`.
+- On the **Variables** tab, add `WEB_APP_URL` with your site's URL and `AZURE_EMAIL_SENDER` (the MailFrom address of your Azure email domain).
 
 Then open *Actions → Daily edition → Run workflow* and tick **Dry run** to check the setup. After that, the workflow runs automatically every day at 05:37 UTC.
 

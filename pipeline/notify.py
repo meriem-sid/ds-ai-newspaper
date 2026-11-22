@@ -1,5 +1,5 @@
 """Stage 4b — Morning ping: top Front Page headlines, deadlines closing within 5 days,
-and a link to the web app. Telegram (primary) and/or email via Resend (optional).
+and a link to the web app. Telegram, plus the subscriber email briefing (Azure Communication Services Email).
 
 Notification failures are logged, never raised: a dead bot token must not fail a
 run whose edition is already saved.
@@ -16,6 +16,8 @@ import html
 import logging
 import os
 import sys
+import time
+import uuid
 from datetime import date, datetime, timezone
 
 import httpx
@@ -105,9 +107,8 @@ def notify(edition: Edition, deadlines: list[Article], edition_number: int | Non
     return {"telegram": send_telegram(text)}
 
 
-# ── Email briefing to subscribers (Resend) ──────────────────────────────────
+# ── Email briefing to subscribers (Azure Communication Services Email) ─────
 
-RESEND_BATCH = 100  # Resend: max emails per batch call
 UNSUB_PLACEHOLDER = "%%UNSUBSCRIBE_URL%%"
 
 SECTION_LINKS = [  # (category, (singular, plural), anchor on the edition page)
@@ -120,7 +121,7 @@ SECTION_LINKS = [  # (category, (singular, plural), anchor on the edition page)
 
 
 def email_configured() -> bool:
-    return bool(os.getenv("RESEND_API_KEY") and os.getenv("EMAIL_FROM") and os.getenv("WEB_APP_URL"))
+    return bool(os.getenv("AZURE_COMMUNICATION_CONNECTION_STRING") and os.getenv("AZURE_EMAIL_SENDER") and os.getenv("WEB_APP_URL"))
 
 
 def _first_sentence(text: str) -> str:
@@ -203,46 +204,59 @@ def _left(deadline: str, today: date) -> str:
     return "today" if n <= 0 else "tomorrow" if n == 1 else f"in {n} days"
 
 
+def _azure_client():
+    from azure.communication.email import EmailClient  # imported lazily: only needed when email is on
+
+    return EmailClient.from_connection_string(os.environ["AZURE_COMMUNICATION_CONNECTION_STRING"])
+
+
+def briefing_operation_id(edition_date: str, subscriber_id: int) -> str:
+    """Stable GUID per (edition, subscriber): Azure treats a repeated send with the same
+    operation id as the same request, so a retried run can't send a duplicate."""
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, f"ds-ai-daily:briefing:{edition_date}:{subscriber_id}"))
+
+
 def send_briefings(recipients: list[tuple[int, str, str]], edition: Edition, deadlines: list[Article],
                    edition_number: int | None = None) -> list[int]:
-    """Send the briefing via Resend's batch API; returns ids that were sent.
-    Each email has its own unsubscribe link plus List-Unsubscribe / List-Unsubscribe-Post
-    headers (one-click unsubscribe in Gmail, Outlook, Apple Mail)."""
+    """Send the briefing via Azure Communication Services Email; returns ids that were sent.
+
+    One message per subscriber (each has its own unsubscribe link plus List-Unsubscribe /
+    List-Unsubscribe-Post headers for one-click unsubscribe), paced to stay under Azure's
+    per-minute limit: 30/min on a custom domain, 5/min on the Azure-managed test domain."""
     if not recipients:
         return []
     web = os.environ["WEB_APP_URL"].rstrip("/")
+    sender = os.environ["AZURE_EMAIL_SENDER"]
+    interval = float(os.getenv("EMAIL_SEND_INTERVAL_SECONDS", "2.5"))
     subject, html_body, text_body = build_briefing(edition, deadlines, web, edition_number)
+    client = _azure_client()
     sent: list[int] = []
-    for start in range(0, len(recipients), RESEND_BATCH):
-        chunk = recipients[start : start + RESEND_BATCH]
-        payload = []
-        for _, email, token in chunk:
-            page = f"{web}/unsubscribe?token={token}"
-            one_click = f"{web}/api/unsubscribe?token={token}"
-            payload.append({
-                "from": os.environ["EMAIL_FROM"],
-                "to": [email],
+    for n, (sid, email, token) in enumerate(recipients):
+        if n:
+            time.sleep(interval)
+        page = f"{web}/unsubscribe?token={token}"
+        one_click = f"{web}/api/unsubscribe?token={token}"
+        message = {
+            "senderAddress": sender,
+            "recipients": {"to": [{"address": email}]},
+            "content": {
                 "subject": subject,
                 "html": html_body.replace(UNSUB_PLACEHOLDER, html.escape(page, quote=True)),
-                "text": text_body.replace(UNSUB_PLACEHOLDER, page),
-                "headers": {"List-Unsubscribe": f"<{one_click}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"},
-            })
-        # Same key for the same edition + recipients: a retried request can't double-send (Resend keeps keys 24h).
-        key = f"briefing-{edition.edition_date}-{chunk[0][0]}-{chunk[-1][0]}-{len(chunk)}"
+                "plainText": text_body.replace(UNSUB_PLACEHOLDER, page),
+            },
+            "headers": {"List-Unsubscribe": f"<{one_click}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"},
+            "userEngagementTrackingDisabled": True,  # no open/click tracking
+        }
         try:
-            resp = httpx.post(
-                "https://api.resend.com/emails/batch",
-                headers={"Authorization": f"Bearer {os.environ['RESEND_API_KEY']}", "Idempotency-Key": key},
-                json=payload,
-                timeout=60,
-            )
-        except httpx.HTTPError as exc:
-            log.error("email: batch of %d failed: %s", len(chunk), type(exc).__name__)
+            poller = client.begin_send(message, operation_id=briefing_operation_id(edition.edition_date, sid))
+            status = (poller.result(timeout=120) or {}).get("status")
+        except Exception as exc:  # noqa: BLE001 — one bad address or a throttle must not stop the rest
+            log.error("email: send to subscriber %s failed: %s", sid, str(exc)[:200])
             continue
-        if resp.status_code >= 300:
-            log.error("email: batch of %d failed (HTTP %s): %s", len(chunk), resp.status_code, resp.text[:200])
-            continue
-        sent += [sid for sid, _, _ in chunk]
+        if status == "Succeeded":  # "accepted for delivery" in Azure's terms
+            sent.append(sid)
+        else:
+            log.error("email: send to subscriber %s ended with status %s", sid, status)
     log.info("email: briefing sent to %d of %d subscribers", len(sent), len(recipients))
     return sent
 
@@ -277,7 +291,7 @@ def main() -> int:
         return 0
     if args.briefing:
         if not email_configured():
-            log.error("set RESEND_API_KEY, EMAIL_FROM and WEB_APP_URL in .env first")
+            log.error("set AZURE_COMMUNICATION_CONNECTION_STRING, AZURE_EMAIL_SENDER and WEB_APP_URL in .env first")
             return 1
         limit = int(os.getenv("EMAIL_DAILY_LIMIT", "95"))
         with db.connect() as conn:

@@ -79,9 +79,9 @@ def print_edition(ed: Edition) -> None:
 def send_subscriber_briefings(edition: Edition, deadlines, edition_number: int) -> None:
     """Email active subscribers who haven't had this edition yet. Never fails the run."""
     if not notify.email_configured():
-        log.info("email: RESEND_API_KEY / EMAIL_FROM / WEB_APP_URL not set; skipping subscriber briefing")
+        log.info("email: AZURE_COMMUNICATION_CONNECTION_STRING / AZURE_EMAIL_SENDER / WEB_APP_URL not set; skipping subscriber briefing")
         return
-    limit = int(os.getenv("EMAIL_DAILY_LIMIT", "95"))  # Resend free plan: 100 emails/day
+    limit = int(os.getenv("EMAIL_DAILY_LIMIT", "95"))  # Azure custom domain: 100/hour by default (managed test domain: 10/hour)
     try:
         with db.connect() as conn:
             recipients = db.subscribers_due(conn, edition.edition_date, limit)

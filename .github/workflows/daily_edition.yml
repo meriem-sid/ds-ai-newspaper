@@ -38,13 +38,15 @@ jobs:
       KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      AZURE_COMMUNICATION_CONNECTION_STRING: ${{ secrets.AZURE_COMMUNICATION_CONNECTION_STRING }}
       # Built into every Actions run (no setup): raises the GitHub search API rate limit for the repo fetcher.
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Non-secret settings: same page → "Variables" (all optional)
       WEB_APP_URL: ${{ vars.WEB_APP_URL }}
-      # Subscriber briefing: sender on a domain verified in Resend, e.g. "DS & AI Daily <briefing@yourdomain.com>"
-      EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+      # Subscriber briefing (Azure Email): MailFrom address of a domain connected to the resource
+      AZURE_EMAIL_SENDER: ${{ vars.AZURE_EMAIL_SENDER }}
+      EMAIL_DAILY_LIMIT: ${{ vars.EMAIL_DAILY_LIMIT || '95' }}
+      EMAIL_SEND_INTERVAL_SECONDS: ${{ vars.EMAIL_SEND_INTERVAL_SECONDS || '2.5' }}
       GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.8-flash' }}
       GEMINI_FALLBACK_MODELS: ${{ vars.GEMINI_FALLBACK_MODELS || 'gemini-3.7-flash,gemini-3.5-flash-lite' }}
       PYTHONIOENCODING: utf-8

@@ -1,26 +1,39 @@
 import "server-only";
+import { EmailClient } from "@azure/communication-email";
 
 /**
- * Minimal Resend client (plain HTTPS, no SDK). Needs RESEND_API_KEY and EMAIL_FROM,
- * e.g. EMAIL_FROM="DS & AI Daily <briefing@yourdomain.com>" — a domain verified in Resend.
- * Without a verified domain, Resend only delivers to your own account address.
+ * Azure Communication Services Email. Needs:
+ *   AZURE_COMMUNICATION_CONNECTION_STRING  — "endpoint=https://<resource>.communication.azure.com/;accesskey=…"
+ *   AZURE_EMAIL_SENDER                     — the MailFrom address of a domain connected to that resource,
+ *                                            e.g. DoNotReply@<guid>.azurecomm.net (test domain) or
+ *                                            DoNotReply@yourdomain.com (custom domain).
+ * The Azure-managed test domain is limited to 5 emails/min and 10/hour; a custom domain gets 30/min, 100/hour.
  */
 export function emailConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+  return Boolean(process.env.AZURE_COMMUNICATION_CONNECTION_STRING && process.env.AZURE_EMAIL_SENDER);
 }
 
 export function siteUrl(): string {
   return (process.env.PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/+$/, "");
 }
 
+let client: EmailClient | null = null;
+
+/**
+ * Hand one email to Azure. We return once Azure has *accepted* it (the send request
+ * succeeded) rather than polling until delivery, so the sign-up form answers quickly;
+ * Azure delivers in the background.
+ */
 export async function sendEmail(msg: { to: string; subject: string; html: string; text: string; headers?: Record<string, string> }) {
-  if (!emailConfigured()) throw new Error("email not configured (RESEND_API_KEY / EMAIL_FROM)");
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: process.env.EMAIL_FROM, to: [msg.to], subject: msg.subject, html: msg.html, text: msg.text, headers: msg.headers }),
+  if (!emailConfigured()) throw new Error("email not configured (AZURE_COMMUNICATION_CONNECTION_STRING / AZURE_EMAIL_SENDER)");
+  client ??= new EmailClient(process.env.AZURE_COMMUNICATION_CONNECTION_STRING!);
+  await client.beginSend({
+    senderAddress: process.env.AZURE_EMAIL_SENDER!,
+    recipients: { to: [{ address: msg.to }] },
+    content: { subject: msg.subject, plainText: msg.text, html: msg.html },
+    headers: msg.headers,
+    disableUserEngagementTracking: true, // no open/click tracking
   });
-  if (!res.ok) throw new Error(`Resend ${res.status}: ${(await res.text()).slice(0, 200)}`);
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
