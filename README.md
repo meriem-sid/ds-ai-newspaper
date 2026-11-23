@@ -73,7 +73,15 @@ Open http://localhost:3000.
 - On the **Secrets** tab, add: `GEMINI_API_KEY`, `GROQ_API_KEY`, `DATABASE_URL`, `TAVILY_API_KEY`, `KAGGLE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `AZURE_COMMUNICATION_CONNECTION_STRING`.
 - On the **Variables** tab, add `WEB_APP_URL` with your site's URL and `AZURE_EMAIL_SENDER` (the MailFrom address of your Azure email domain).
 
-Then open *Actions → Daily edition → Run workflow* and tick **Dry run** to check the setup. After that, the workflow runs automatically every day at 05:37 UTC.
+Then open *Actions → Daily edition → Run workflow* and tick **Dry run** to check the setup. After that, start it on a timer every morning. GitHub's own schedule is only a backup, because free-plan scheduled runs are often hours late:
+
+1. GitHub → *Settings → Developer settings → Fine-grained personal access tokens → Generate new token*: only this repository, permission **Actions: Read and write**.
+2. [cron-job.org](https://cron-job.org) (free) → *Create cronjob*:
+   - URL: `https://api.github.com/repos/<you>/<repo>/actions/workflows/daily_edition.yml/dispatches`, every day at 05:37 UTC
+   - *Advanced*: method **POST**; headers `Authorization: Bearer <token>`, `Accept: application/vnd.github+json`, `Content-Type: application/json`; body `{"ref":"main","inputs":{"skip_if_published":"true"}}`
+   - A successful call returns **204**.
+
+If the edition is already out, later triggers (including GitHub's backup at 08:23 UTC) do nothing.
 
 ## License
 

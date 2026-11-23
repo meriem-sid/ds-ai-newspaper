@@ -99,6 +99,9 @@ def main() -> int:
     parser.add_argument("--local", action="store_true", help="Ignore DATABASE_URL; use the local JSON seen-cache.")
     parser.add_argument("--remember", action="store_true", help="With --local: record processed items in the local seen-cache.")
     parser.add_argument("--no-notify", action="store_true", help="Save the edition but don't send the Telegram/email digest.")
+    parser.add_argument("--skip-if-published", action="store_true",
+                        help="Do nothing if today's edition is already saved (for timed triggers, so a late or "
+                             "duplicate trigger never publishes or sends twice).")
     args = parser.parse_args()
 
     if hasattr(sys.stdout, "reconfigure"):
@@ -111,6 +114,9 @@ def main() -> int:
         # drops idle connections / suspends idle computes.
         with db.connect() as conn:
             db.apply_schema(conn)  # idempotent; keeps the DB in sync with db/schema.sql
+            if args.skip_if_published and not args.dry_run and db.edition_exists(conn, today.isoformat()):
+                log.info("Today's edition (%s) is already published; nothing to do.", today.isoformat())
+                return 0
             seen_urls, seen_titles = db.PgSeenStore(conn).load()
         log.info("Postgres seen-history: %d urls%s", len(seen_urls), " (dry run: read-only)" if args.dry_run else "")
     else:

@@ -138,6 +138,11 @@ def _row_to_article(r) -> Article:
     )
 
 
+def edition_exists(conn: psycopg.Connection, edition_date: str) -> bool:
+    """Whether an edition for `edition_date` is already saved."""
+    return conn.execute("SELECT 1 FROM editions WHERE edition_date = %s::date", (edition_date,)).fetchone() is not None
+
+
 def load_latest_edition(conn: psycopg.Connection, edition_date: str | None = None) -> tuple[Edition, int] | None:
     """The edition as stored (merged across same-day runs): latest, or for `edition_date`."""
     row = conn.execute(

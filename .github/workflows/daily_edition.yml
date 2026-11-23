@@ -2,9 +2,10 @@ name: Daily edition
 
 on:
   schedule:
-    # 05:37 UTC every day (≈ 06:45–07:15 GMT+1 once the run finishes). Deliberately not on the
-    # hour: GitHub queues scheduled runs and delays are worst at :00 (one 06:00 run started 8h late).
-    - cron: "37 5 * * *"
+    # Backup only. The daily run is started at 05:37 UTC by cron-job.org (see README), because
+    # GitHub's own scheduler delays free-plan runs by hours or skips them. If this backup fires
+    # after the edition is already out, it exits straight away (--skip-if-published).
+    - cron: "23 8 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -13,6 +14,10 @@ on:
         default: false
       no_notify:
         description: "Save the edition but skip the Telegram/email digest"
+        type: boolean
+        default: false
+      skip_if_published:
+        description: "Do nothing if today's edition already exists (used by the cron-job.org trigger)"
         type: boolean
         default: false
 
@@ -70,6 +75,9 @@ jobs:
           args=()
           if [ "${{ inputs.dry_run }}" = "true" ]; then args+=(--dry-run); fi
           if [ "${{ inputs.no_notify }}" = "true" ]; then args+=(--no-notify); fi
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.skip_if_published }}" = "true" ]; then
+            args+=(--skip-if-published)
+          fi
           python -m pipeline.main "${args[@]}"
 
       - name: Keep the edition JSON (14 days)
