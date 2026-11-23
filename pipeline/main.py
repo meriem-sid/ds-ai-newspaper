@@ -15,7 +15,7 @@ import sys
 import textwrap
 from datetime import datetime, timezone
 
-from . import db, notify
+from . import db, ideas, notify
 from .clean import LocalSeenStore, clean, normalize_url
 from .config import ROOT, settings
 from .editor import EditorError, build_edition, build_edition_heuristic
@@ -160,6 +160,8 @@ def main() -> int:
             digest_edition = stored[0] if stored else edition
             sent = notify.notify(digest_edition, deadlines, saved["edition_number"])
             log.info("notifications: %s", ", ".join(f"{k}={'sent' if v else 'skipped'}" for k, v in sent.items()))
+            if sent.get("telegram"):
+                ideas.send_ideas(digest_edition)  # personal "Try today" ideas; best-effort
             send_subscriber_briefings(digest_edition, deadlines, saved["edition_number"])
     elif args.remember:
         local_store.record(cleaned, kept)

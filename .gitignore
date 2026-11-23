@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+# Private reader profile for the Telegram project ideas
+reader_profile.md
+
 # Python
 .venv/
 __pycache__/

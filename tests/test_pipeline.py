@@ -410,3 +410,31 @@ def test_send_briefings_azure_one_message_each_with_unsubscribe_and_stable_ids(m
     assert first["userEngagementTrackingDisabled"] is True
     # Same edition + subscriber -> same operation id (Azure dedupes a retried send); a different subscriber differs.
     assert op_id == notify.briefing_operation_id(today, 1) != notify.briefing_operation_id(today, 4)
+
+
+# ── "Try today" project ideas ───────────────────────────────────────────────
+from pipeline import ideas as ideas_mod  # noqa: E402
+
+
+def _arts(n: int) -> list[Article]:
+    return [Article(category="research", title=f"Story {i}", what_happened="x.", why_it_matters="y.",
+                    url=f"https://example.com/{i}", source="s", relevance_score=8) for i in range(1, n + 1)]
+
+
+def test_verify_ideas_grounds_links_orders_levels_and_drops_bad_ones():
+    arts = _arts(3)
+    mk = lambda level, ids, title="T": ideas_mod.Idea(level=level, title=title, pitch="p", connects="c",
+                                                      first_step="do it", time_estimate="1h", source_ids=ids)
+    raw = [mk("stretch", [3]), mk("quick", [2, 2, 99]), mk("weekend", [0, 42]),  # weekend has no valid id
+           mk("quick", [1], "dup level"), mk("bogus", [1])]
+    out = ideas_mod.verify_ideas(raw, arts)
+    assert [i.level for i in out] == ["quick", "stretch"]
+    assert out[0].sources == [("Story 2", "https://example.com/2")]  # deduped, unknown id 99 dropped
+    msg = ideas_mod.build_ideas_message(out, "2026-11-23")
+    assert "Quick try" in msg and 'href="https://example.com/3"' in msg and "Weekend" not in msg
+
+
+def test_generate_ideas_skips_without_profile(monkeypatch):
+    monkeypatch.delenv("READER_PROFILE", raising=False)
+    monkeypatch.setattr(ideas_mod, "PROFILE_FILE", ideas_mod.ROOT / "no-such-profile.md")
+    assert ideas_mod.generate_ideas(Edition(edition_date="2026-11-23", summary_headline="h", articles=_arts(2))) == []

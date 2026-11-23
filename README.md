@@ -4,7 +4,7 @@ An automated daily briefing for early-career data scientists and AI engineers, b
 
 Every morning it collects new research papers, model and tool releases, industry news, hackathons and competitions, remote junior and internship roles, and online workshops. It drops duplicates and anything already covered in the last 30 days, then uses an LLM editor (Gemini, with Groq as a fallback) to keep only what is worth reading and write a short, hype-free summary of each story. Every link comes straight from the original source. Deadlines and event dates are only shown when they can be verified against the source text.
 
-The result is published as a newspaper-style web edition with a front page, an urgent-deadlines banner, sections for research, hackathons, jobs and events, bookmarks, read tracking, and a searchable archive. A short digest is also sent to Telegram each morning.
+The result is published as a newspaper-style web edition with a front page, an urgent-deadlines banner, sections for research, hackathons, jobs and events, bookmarks, read tracking, and a searchable archive. A short digest is also sent to Telegram each morning, followed by three "Try today" project ideas built on that day's stories and tailored to a private reader profile (`reader_profile.md` locally, or the `READER_PROFILE` GitHub secret; skipped if neither is set).
 
 **Stack:** Python pipeline · Neon Postgres · Next.js + Tailwind on Vercel · GitHub Actions (daily schedule) · Telegram bot
 
