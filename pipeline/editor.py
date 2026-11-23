@@ -28,7 +28,9 @@ log = logging.getLogger("editor")
 
 SYSTEM_PROMPT = """You are the Editor-in-Chief of a daily, no-hype intelligence briefing for an
 EARLY-CAREER data scientist / AI engineer (skills: Python, ML, deep learning, LLMs,
-data engineering; goals: learn what matters, ship projects, get hired).
+data engineering, SQL, business intelligence and analytics such as Power BI, DAX, Fabric,
+dbt and data visualization; goals: learn what matters, ship projects, get hired).
+BI and analytics are core to this reader, not "loosely related": score them like ML news.
 
 You receive a JSON list of candidate items, each with an integer "id".
 Return ONLY stories worth this reader's limited time.

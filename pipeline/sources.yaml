@@ -95,6 +95,12 @@ hackernews:
     - vector (database|search)
     - benchmark
     - reinforcement learning
+    - Power ?BI
+    - Tableau
+    - dbt
+    - business intelligence
+    - analytics
+    - SQL
 
 rss:
   - { name: OpenAI,             url: "https://openai.com/news/rss.xml" }
@@ -123,6 +129,14 @@ rss:
   - { name: Apple ML Research,  url: "https://machinelearning.apple.com/rss.xml" }
   - { name: Meta Engineering,   url: "https://engineering.fb.com/feed/" }
   - { name: Netflix Tech Blog,  url: "https://netflixtechblog.com/feed" }
+  # Business intelligence & analytics (probed 2026-11-23: all active in the last 30 days)
+  - { name: Power BI Blog,      url: "https://powerbi.microsoft.com/en-us/blog/feed/" }
+  - { name: Microsoft Fabric,   url: "https://blog.fabric.microsoft.com/en-us/blog/feed/" }
+  - { name: SQLBI,              url: "https://www.sqlbi.com/feed/" }
+  - { name: Chris Webb (BI),    url: "https://blog.crossjoin.co.uk/feed/" }
+  - { name: dbt Blog,           url: "https://www.getdbt.com/blog/rss.xml" }
+  - { name: Storytelling with Data, url: "https://www.storytellingwithdata.com/blog?format=rss" }
+  - { name: Tableau Blog,       url: "https://www.tableau.com/blog/feed" }
   # Anthropic and Meta AI publish no official RSS feed. Their announcements
   # still arrive via Hacker News, Simon Willison, and Import AI; Phase 2 can
   # add a Tavily query for their newsrooms if coverage looks thin.
